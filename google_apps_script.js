@@ -233,6 +233,7 @@ function handleLogin(payload) {
   }
 
   // 1.2 Đăng nhập chuẩn (Username & Password) cho Admin, GVCN, hoặc Tổ Trưởng
+  const cleanInput = username.replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -245,12 +246,15 @@ function handleLogin(payload) {
     const assignedGroup = String(row[5] || '*');
     const status = String(row[6] || row[5]);
 
-    if (u === username && p === password) {
+    const cleanU = u.replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
+    const isUserMatch = (u === username) || (cleanInput && cleanU === cleanInput && (role === 'teacher' || role === 'admin'));
+
+    if (isUserMatch && p === password) {
       if (status === 'locked') {
         return createJsonResponse({ status: 'error', message: 'Tài khoản này đang bị khóa. Vui lòng liên hệ Admin.' });
       }
 
-      const token = Utilities.base64Encode(username + ':' + Date.now());
+      const token = Utilities.base64Encode(u + ':' + Date.now());
 
       return createJsonResponse({
         status: 'success',
@@ -1186,9 +1190,20 @@ function handleUpdateTeacherPassword(payload) {
     }
   }
 
+  // Tự động tạo mới tài khoản nếu chưa có trên Sheet
+  if (!updated) {
+    const fullname = String(payload.fullname || username);
+    const role = String(payload.role || 'teacher');
+    const assignedClass = String(payload.assignedClass || '*');
+    const assignedGroup = String(payload.assignedGroup || '*');
+    sheet.appendRow([username, String(newPassword), fullname, role, assignedClass, assignedGroup, 'active']);
+    sheet.getRange(sheet.getLastRow(), 2).setNumberFormat('@').setValue(String(newPassword));
+    updated = true;
+  }
+
   return createJsonResponse({
-    status: updated ? 'success' : 'error',
-    message: updated ? `Đã cập nhật mật khẩu cho tài khoản ${username} thành công!` : `Không tìm thấy tài khoản ${username}!`
+    status: 'success',
+    message: `Đã cập nhật mật khẩu cho tài khoản ${username} thành công!`
   });
 }
 

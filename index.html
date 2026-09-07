@@ -291,7 +291,7 @@
 <script>
 'use strict';
 const STORAGE_KEY='lopHocVuiVeTeal_lop8A6_v5';
-const APP_SCHEMA_VERSION=5;
+const APP_SCHEMA_VERSION=6;
 const RECOVERY_KEY=STORAGE_KEY+'_recovery';
 const DEFAULT_GAS_API_URL='https://script.google.com/macros/s/AKfycbxHDvUXKwPl-7iUWLl47EocKemBZE9AryVz9El1daqjSdu8ugCKQ4RahEYDdLdClmynPw/exec';
 const ATTENDANCE_STATUSES=['unmarked','present','late','excused','unexcused'];
@@ -440,7 +440,32 @@ function normalizeState(raw){
  const teacher={name:String(x.teacher?.name||d.teacher.name).slice(0,120),role:String(x.teacher?.role||d.teacher.role).slice(0,80),subject:String(x.teacher?.subject||d.teacher.subject).slice(0,100),school:String(x.teacher?.school||d.teacher.school).slice(0,160),avatar:safeAvatar(x.teacher?.avatar)};
   const settings={...d.settings,...(x.settings&&typeof x.settings==='object'?x.settings:{}),gasApiUrl:String(x.settings?.gasApiUrl||localStorage.getItem('gas_api_url')||DEFAULT_GAS_API_URL).trim(),wheelExclude:x.settings?.wheelExclude!==false,filmExclude:x.settings?.filmExclude!==false,tickLast10:!!x.settings?.tickLast10,timerColor:/^#[0-9a-f]{6}$/i.test(x.settings?.timerColor||'')?x.settings.timerColor:'#0d9488',wheelEffectMode:x.settings?.wheelEffectMode==='fixed'?'fixed':'random'};
   const active=classIds.has(String(x.activeClassId||''))?String(x.activeClassId):classes[0].id;
-  const accounts=Array.isArray(x.accounts)&&x.accounts.length?x.accounts.map(a=>({id:safeId(a?.id,'acc'),username:String(a?.username||'').trim().toLowerCase(),password:String(a?.password||a?.pin||'123456').trim(),fullname:String(a?.fullname||a?.username||'').slice(0,120),role:['admin','teacher','group_leader'].includes(a?.role)?a.role:'teacher',assignedClass:String(a?.assignedClass||'*').slice(0,80),assignedGroup:String(a?.assignedGroup||'*').slice(0,80),status:a?.status==='locked'?'locked':'active',phone:String(a?.phone||'').slice(0,30),updatedAt:isNaN(Date.parse(a?.updatedAt))?new Date().toISOString():new Date(a.updatedAt).toISOString()})).filter(a=>a.username):DEFAULT_ACCOUNTS.map(a=>({id:safeId('acc_'+a.username,'acc'),username:a.username,password:a.password||a.pin||'123456',fullname:a.fullname,role:a.role,assignedClass:a.assignedClass,assignedGroup:a.assignedGroup,status:'active',phone:'',updatedAt:new Date().toISOString()}));
+   const rawAccList = Array.isArray(x.accounts) && x.accounts.length ? x.accounts : DEFAULT_ACCOUNTS;
+   const accountsMap = new Map();
+   rawAccList.forEach(a => {
+     const u = String(a?.username || '').trim().toLowerCase();
+     if(!u) return;
+     const pwd = String(a?.password || a?.pin || '123456').trim();
+     const item = {
+       id: safeId(a?.id || 'acc_' + u, 'acc'),
+       username: u,
+       password: pwd,
+       fullname: String(a?.fullname || a?.username || '').slice(0,120),
+       role: ['admin','teacher','group_leader'].includes(a?.role) ? a.role : 'teacher',
+       assignedClass: String(a?.assignedClass || '*').slice(0,80),
+       assignedGroup: String(a?.assignedGroup || '*').slice(0,80),
+       status: a?.status === 'locked' ? 'locked' : 'active',
+       phone: String(a?.phone || '').slice(0,30),
+       updatedAt: isNaN(Date.parse(a?.updatedAt)) ? new Date().toISOString() : new Date(a.updatedAt).toISOString()
+     };
+     if (!accountsMap.has(u)) {
+       accountsMap.set(u, item);
+     } else {
+       const prev = accountsMap.get(u);
+       accountsMap.set(u, Object.assign({}, prev, item));
+     }
+   });
+   const accounts = Array.from(accountsMap.values());
   return {version:APP_SCHEMA_VERSION,rosterVersion:String(x.rosterVersion||'').slice(0,80),activeClassId:active,currentPage:PAGE_META[x.currentPage]?x.currentPage:'home',teacher,classes,students,attendance,attendanceDate:/^\d{4}-\d{2}-\d{2}$/.test(x.attendanceDate||'')?x.attendanceDate:today(),seating,timetable:{morning:true,afternoon:true,morningCount:5,afternoonCount:5,slotTimes,slotTimesMorning,slotTimesAfternoon,viewSession:['morning','afternoon'].includes(x.timetable?.viewSession)?x.timetable.viewSession:'',entries},rewards,redemptions,transactions,wheelHistory:historyFilter(x.wheelHistory),filmHistory:historyFilter(x.filmHistory),links,subjects,settings,wheelExcluded:Array.isArray(x.wheelExcluded)?x.wheelExcluded.filter(id=>studentIds.has(id)):[],filmExcluded:Array.isArray(x.filmExcluded)?x.filmExcluded.filter(id=>studentIds.has(id)):[],wheelGroup:['all','favorite','manual'].includes(x.wheelGroup)?x.wheelGroup:'all',wheelEffect:['Xoáy tròn','Tung nảy','Hút vào tâm','Bay theo quỹ đạo','Mưa bóng','Sân khấu ánh sáng','Sóng bồng bềnh'].includes(x.wheelEffect)?x.wheelEffect:'Xoáy tròn',wheelSelected:Array.isArray(x.wheelSelected)?x.wheelSelected.filter(id=>studentIds.has(id)):[],competition:normalizeCompetition(x.competition,classes,students),accounts};
 }
 
@@ -547,9 +572,11 @@ function ensureLocalAccountsForClass(classId, className, teacherName) {
   const teacherDisplay = teacherName ? `${teacherName} (GVCN ${className})` : `GVCN ${className}`;
   
   if (state && Array.isArray(state.accounts)) {
-    let existingTeacher = state.accounts.find(a => a.username.toLowerCase() === teacherUser || (a.role === 'teacher' && a.assignedClass === classId));
+    let existingTeacher = state.accounts.find(a => a.username.toLowerCase() === teacherUser);
     if (existingTeacher) {
-      if (teacherName) existingTeacher.fullname = teacherDisplay;
+      if (teacherName && (!existingTeacher.fullname || existingTeacher.fullname.startsWith('GVCN '))) {
+        existingTeacher.fullname = teacherDisplay;
+      }
       existingTeacher.assignedClass = classId;
     } else {
       state.accounts.push({
@@ -589,7 +616,7 @@ function ensureLocalAccountsForClass(classId, className, teacherName) {
     });
   }
 
-  let existingTeacherDef = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === teacherUser || (a.role === 'teacher' && a.assignedClass === classId));
+  let existingTeacherDef = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === teacherUser);
   if (existingTeacherDef) {
     if (teacherName) existingTeacherDef.fullname = teacherDisplay;
   } else {
@@ -642,9 +669,69 @@ function saveUserSession(user){
   sessionStorage.setItem('gvcn_user_session', JSON.stringify(user));
   localStorage.setItem('gvcn_user_session', JSON.stringify(user));
 }
+function togglePasswordInput(inputId, btnEl){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const icon = btnEl ? btnEl.querySelector('i') : null;
+  if(input.type === 'password'){
+    input.type = 'text';
+    if(icon){ icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+  } else {
+    input.type = 'password';
+    if(icon){ icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+  }
+}
+
+function quickSelectLoginAccount(username){
+  const uInput = document.getElementById('loginUsername');
+  const pInput = document.getElementById('loginPassword');
+  if(uInput) uInput.value = username;
+  if(pInput){
+    pInput.value = '';
+    pInput.focus();
+  }
+}
+
+function findMatchingAccount(accountsList, inputUsername) {
+  if (!Array.isArray(accountsList)) return null;
+  const raw = String(inputUsername || '').trim();
+  if (!raw) return null;
+  const u = raw.toLowerCase();
+  const cleanU = u.replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
+
+  // 1. Khớp chính xác username (không phân biệt hoa thường)
+  let found = accountsList.find(a => String(a.username || '').trim().toLowerCase() === u);
+  if (found) return found;
+
+  // 2. Khớp có/không có tiền tố gv_ (ví dụ người dùng gõ "8a3" hoặc "gv8a3" thay vì "gv_8a3")
+  found = accountsList.find(a => {
+    const accU = String(a.username || '').trim().toLowerCase();
+    const cleanAccU = accU.replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
+    return cleanAccU === cleanU || accU === ('gv_' + cleanU) || ('gv_' + accU) === u;
+  });
+  if (found) return found;
+
+  // 3. Khớp theo mã lớp hoặc tên lớp được phân công (ví dụ gõ "8A3" và giáo viên được phân công lớp 8A3)
+  found = accountsList.find(a => {
+    if (a.role !== 'teacher') return false;
+    const clsId = String(a.assignedClass || '').toLowerCase().replace(/^class_/, '');
+    return clsId === cleanU;
+  });
+  return found || null;
+}
+
 function showLoginModal(){
   const classesList = state.classes && state.classes.length ? state.classes : [{ id: 'class_8a6', name: '8A6' }, { id: 'class_8a1', name: '8A1' }];
   const classOptions = classesList.map(c => `<option value="${c.id}" ${c.id === state.activeClassId ? 'selected' : ''}>Lớp ${esc(c.name)}</option>`).join('');
+
+  const allAccounts = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+  const teacherAccounts = allAccounts.filter(a => a.role === 'teacher' || a.role === 'admin');
+  const chipsHtml = teacherAccounts.map(a => {
+    const isCur = currentUser?.username === a.username;
+    return `<button type="button" class="btn btn-sm ${isCur ? 'btn-primary text-white' : 'btn-outline-secondary'} py-1 px-2 text-nowrap font-monospace" onclick="quickSelectLoginAccount('${esc(a.username)}')">
+      <i class="fa-solid ${a.role==='admin'?'fa-crown text-warning':'fa-chalkboard-user text-primary'} me-1"></i>${esc(a.username)}
+    </button>`;
+  }).join(' ');
 
   showModal('Hệ Thống Đăng Nhập Toàn Trường', `
     <div class="text-center mb-3">
@@ -674,21 +761,34 @@ function showLoginModal(){
             <label class="form-label fw-bold">Tên đăng nhập *</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-              <input id="loginUsername" class="form-control" required placeholder="admin hoặc gv_8a6" value="${esc(currentUser?.role !== 'group_leader' ? (currentUser?.username || 'gv_8a6') : 'gv_8a6')}">
+              <input id="loginUsername" class="form-control font-monospace fw-bold" required placeholder="admin hoặc gv_8a3" value="${esc(currentUser?.role !== 'group_leader' ? (currentUser?.username || '') : '')}">
             </div>
           </div>
           <div class="mb-3">
             <label class="form-label fw-bold">Mật khẩu *</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-              <input id="loginPassword" type="password" class="form-control" required placeholder="Mật khẩu" value="123456">
+              <input id="loginPassword" type="password" class="form-control font-monospace fw-bold" required placeholder="Nhập mật khẩu" autocomplete="current-password">
+              <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordInput('loginPassword', this)" title="Hiện / Ẩn mật khẩu">
+                <i class="fa-solid fa-eye"></i>
+              </button>
             </div>
           </div>
-          <div class="alert alert-light border small py-2">
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label fw-bold m-0 small text-muted"><i class="fa-solid fa-bolt me-1 text-warning"></i>Bấm chọn nhanh tài khoản:</label>
+            </div>
+            <div class="d-flex flex-wrap gap-1 p-2 bg-light rounded border" style="max-height:80px; overflow-y:auto;">
+              ${chipsHtml}
+            </div>
+          </div>
+
+          <div class="alert alert-light border small py-2 mb-3">
             <b>Tài khoản mẫu:</b><br>
             • Admin: <code>admin</code> / pass: <code>admin123</code> (Toàn quyền các lớp)<br>
-            • GVCN 8A6: <code>gv_8a6</code> / pass: <code>123456</code> (Quản lý lớp 8A6)<br>
-            • GVCN 8A1: <code>gv_8a1</code> / pass: <code>123456</code> (Quản lý lớp 8A1)
+            • GVCN: gõ mã lớp như <code>gv_8a3</code> (hoặc chỉ cần gõ <code>8a3</code>)<br>
+            • Mật khẩu do Admin khởi tạo hoặc cấp trong mục <b>Quản Trị</b>.
           </div>
           <button type="submit" class="btn btn-primary w-100 py-2 fw-bold"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập Giáo viên</button>
         </form>
@@ -719,6 +819,9 @@ function showLoginModal(){
             <div class="input-group">
               <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
               <input id="pinLoginPin" type="password" maxlength="6" class="form-control font-monospace text-center fs-5 fw-bold" required placeholder="1234" value="1234">
+              <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordInput('pinLoginPin', this)" title="Hiện / Ẩn mã PIN">
+                <i class="fa-solid fa-eye"></i>
+              </button>
             </div>
             <div class="form-text text-muted text-center mt-1"><i class="fa-solid fa-circle-info me-1"></i>Mã PIN mặc định ban đầu là <b>1234</b> hoặc do GVCN cung cấp.</div>
           </div>
@@ -733,24 +836,62 @@ function showLoginModal(){
 }
 async function handleLoginSubmit(e){
   e.preventDefault();
-  const u = document.getElementById('loginUsername').value.trim().toLowerCase();
+  const rawU = document.getElementById('loginUsername').value.trim();
   const p = document.getElementById('loginPassword').value.trim();
 
-  if(!u) return toast('Vui lòng nhập tên đăng nhập', 'warning');
+  if(!rawU) return toast('Vui lòng nhập tên đăng nhập', 'warning');
   if(!p) return toast('Vui lòng nhập mật khẩu', 'warning');
 
-  // 1. Kiểm tra tài khoản cục bộ trước
+  // Chuẩn hóa danh sách tài khoản cục bộ & tìm kiếm thông minh
   const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
-  const localAcc = accountsList.find(a => a.username.toLowerCase() === u);
+  const localAcc = findMatchingAccount(accountsList, rawU);
 
-  // 2. Thử xác thực qua Cloud Google Apps Script nếu có kết nối
+  // 1. NẾU TÀI KHOẢN CỤC BỘ KHỚP MẬT KHẨU: ĐĂNG NHẬP NGAY TỨC THÌ!
+  if(localAcc && (String(localAcc.password).trim() === p || String(localAcc.pin || '').trim() === p)){
+    if(localAcc.status === 'locked'){
+      return Swal.fire({
+        icon: 'error',
+        title: 'Tài khoản bị khóa',
+        text: 'Tài khoản này đã bị Quản trị viên tạm khóa. Vui lòng liên hệ Ban Giám Hiệu.'
+      });
+    }
+
+    saveUserSession(localAcc);
+    applyUserPermissions();
+    mainModal.hide();
+    toast(`Đăng nhập thành công: ${localAcc.fullname}!`);
+
+    // Tự động đẩy tài khoản này lên Cloud để đồng bộ ngay (không chặn UI)
+    if(state.settings?.gasApiUrl){
+      callGasApi('save_account', { accountData: localAcc });
+      callGasApi('update_teacher_password', {
+        username: localAcc.username,
+        newPassword: p,
+        fullname: localAcc.fullname,
+        role: localAcc.role,
+        assignedClass: localAcc.assignedClass,
+        assignedGroup: localAcc.assignedGroup
+      });
+      pullClassDataFromCloud(false);
+    }
+    return;
+  }
+
+  // 2. NẾU CỤC BỘ CHƯA KHỚP: Thử xác thực qua Cloud Google Apps Script
   let cloudSuccess = false;
   let cloudUser = null;
   let cloudErrorMsg = '';
 
   if(state.settings?.gasApiUrl){
+    Swal.fire({
+      title: 'Đang xác thực...',
+      text: 'Đang kiểm tra dữ liệu tài khoản...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
     try {
-      const res = await callGasApi('login', { username: u, password: p });
+      const res = await callGasApi('login', { username: rawU, password: p });
       if(res && res.status === 'success' && res.user){
         cloudSuccess = true;
         cloudUser = res.user;
@@ -764,38 +905,40 @@ async function handleLoginSubmit(e){
 
   // 3. Nếu Cloud khớp thông tin
   if(cloudSuccess && cloudUser){
+    state.accounts = state.accounts || [];
+    const idx = state.accounts.findIndex(a => a.username.toLowerCase() === cloudUser.username.toLowerCase());
+    if (idx >= 0) {
+      state.accounts[idx] = Object.assign(state.accounts[idx], cloudUser, { password: p });
+    } else {
+      state.accounts.push(Object.assign({ id: uid('acc'), password: p, status: 'active' }, cloudUser));
+    }
+    saveState(false);
+
     saveUserSession(cloudUser);
     applyUserPermissions();
+    if (Swal.isVisible()) Swal.close();
     mainModal.hide();
     toast('Đăng nhập thành công: ' + cloudUser.fullname);
     pullClassDataFromCloud(false);
     return;
   }
 
-  // 4. Nếu Cloud không thành công (hoặc chưa kịp cập nhật), kiểm tra ngay tài khoản cục bộ vừa tạo/cập nhật
-  if(localAcc && (localAcc.password === p || localAcc.pin === p)){
-    if(localAcc.status === 'locked'){
-      return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản này đã bị Quản trị viên tạm khóa. Vui lòng liên hệ Ban Giám Hiệu.' });
-    }
-
-    saveUserSession(localAcc);
-    applyUserPermissions();
-    mainModal.hide();
-    toast(`Đăng nhập thành công: ${localAcc.fullname}!`);
-
-    // Tự động đẩy tài khoản này lên Cloud để đồng bộ ngay
-    if(state.settings?.gasApiUrl){
-      callGasApi('save_account', { accountData: localAcc });
-      callGasApi('update_teacher_password', { username: localAcc.username, newPassword: p });
-    }
-    return;
-  }
-
-  // 5. Nếu cả Cloud và Cục bộ đều sai
+  // 4. Nếu cả Cloud và Cục bộ đều sai
+  if (Swal.isVisible()) Swal.close();
   Swal.fire({
     icon: 'error',
     title: 'Đăng nhập thất bại',
-    text: cloudErrorMsg || 'Tên đăng nhập hoặc mật khẩu không chính xác.'
+    html: `<div class="text-start">
+      <p class="mb-2">${cloudErrorMsg || 'Tên đăng nhập hoặc mật khẩu không chính xác.'}</p>
+      <div class="alert alert-warning small py-2 mb-0">
+        <i class="fa-solid fa-circle-info me-1"></i><b>Gợi ý kiểm tra:</b>
+        <ul class="mb-0 ps-3 mt-1">
+          <li>Bấm biểu tượng <b>👁️ (con mắt)</b> ở ô mật khẩu để kiểm tra lại ký tự bạn vừa nhập.</li>
+          <li>Bạn có thể nhập tên tài khoản là <code>gv_8a3</code> hoặc đơn giản là <code>8a3</code>.</li>
+          <li>Nếu cần đặt lại mật khẩu, đăng nhập tài khoản <code>admin</code> (pass: <code>admin123</code>) vào mục <b>Quản Trị Phân Công & Cấp Mật Khẩu</b>.</li>
+        </ul>
+      </div>
+    </div>`
   });
 }
 async function handlePinLoginSubmit(e){
@@ -806,11 +949,22 @@ async function handlePinLoginSubmit(e){
 
   if(!pin) return toast('Vui lòng nhập mã PIN', 'warning');
 
-  // 1. Kiểm tra tài khoản tổ trưởng cục bộ
+  // 1. Kiểm tra tài khoản tổ trưởng cục bộ trước (đăng nhập ngay tức thì nếu đúng)
   const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
   const localAcc = accountsList.find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group);
 
-  // 2. Thử Cloud nếu có cấu hình
+  if(localAcc && (String(localAcc.pin).trim() === pin || String(localAcc.password).trim() === pin)){
+    if(localAcc.status === 'locked'){
+      return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản tổ trưởng này đang bị tạm khóa.' });
+    }
+    saveUserSession(localAcc);
+    applyUserPermissions();
+    mainModal.hide();
+    toast(`Đăng nhập Tổ trưởng: ${localAcc.fullname}!`);
+    return;
+  }
+
+  // 2. Thử Cloud nếu cục bộ chưa khớp
   let cloudSuccess = false;
   let cloudUser = null;
   let cloudErrorMsg = '';
@@ -844,19 +998,7 @@ async function handlePinLoginSubmit(e){
     return;
   }
 
-  // 4. Nếu Cloud chưa kịp sync hoặc ngoại tuyến, kiểm tra cục bộ
-  if(localAcc && (localAcc.pin === pin || localAcc.password === pin)){
-    if(localAcc.status === 'locked'){
-      return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản tổ trưởng này đang bị tạm khóa.' });
-    }
-    saveUserSession(localAcc);
-    applyUserPermissions();
-    mainModal.hide();
-    toast(`Đăng nhập Tổ trưởng: ${localAcc.fullname}!`);
-    return;
-  }
-
-  // 5. Cả hai đều không khớp
+  // 4. Cả hai đều không khớp
   Swal.fire({
     icon: 'error',
     title: 'Mã PIN không chính xác',
@@ -3503,7 +3645,14 @@ async function saveTeacherAccount(e){
   if (state.settings?.gasApiUrl) {
     const targetAcc = state.accounts.find(a => a.username.toLowerCase() === username);
     callGasApi('save_account', { accountData: targetAcc });
-    callGasApi('update_teacher_password', { username, newPassword: password });
+    callGasApi('update_teacher_password', {
+      username,
+      newPassword: password,
+      fullname: targetAcc?.fullname || fullname,
+      role: targetAcc?.role || 'teacher',
+      assignedClass: targetAcc?.assignedClass || classId,
+      assignedGroup: '*'
+    });
     if (classId) {
       callGasApi('assign_teacher_to_class', {
         username,
@@ -3662,34 +3811,39 @@ function saveTeacherPassword(e, username){
   let acc = state.accounts.find(a => a.username.toLowerCase() === uLower);
   if (!acc) {
     const def = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === uLower);
-    if (def) {
-      acc = {
-        id: uid('acc'),
-        username: def.username,
-        password: newPassword,
-        fullname: def.fullname || def.username,
-        role: def.role || 'teacher',
-        assignedClass: def.assignedClass || '*',
-        assignedGroup: def.assignedGroup || '*',
-        status: 'active',
-        phone: '',
-        updatedAt: new Date().toISOString()
-      };
-      state.accounts.push(acc);
-    } else {
-      return toast('Không tìm thấy tài khoản', 'error');
-    }
+    acc = {
+      id: uid('acc'),
+      username: def ? def.username : uLower,
+      password: newPassword,
+      fullname: def?.fullname || uLower,
+      role: def?.role || 'teacher',
+      assignedClass: def?.assignedClass || '*',
+      assignedGroup: def?.assignedGroup || '*',
+      status: 'active',
+      phone: '',
+      updatedAt: new Date().toISOString()
+    };
+    state.accounts.push(acc);
+  } else {
+    acc.password = newPassword;
+    acc.updatedAt = new Date().toISOString();
   }
 
-  acc.password = newPassword;
-  acc.updatedAt = new Date().toISOString();
+  // Cập nhật tất cả bản ghi trùng lặp (nếu có)
+  state.accounts.forEach(a => {
+    if (a.username.toLowerCase() === uLower) {
+      a.password = newPassword;
+      a.updatedAt = new Date().toISOString();
+    }
+  });
 
   // Cập nhật cả trong DEFAULT_ACCOUNTS
-  const defAcc = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === uLower);
-  if (defAcc) {
-    defAcc.password = newPassword;
-    defAcc.pin = newPassword;
-  }
+  DEFAULT_ACCOUNTS.forEach(a => {
+    if (a.username.toLowerCase() === uLower) {
+      a.password = newPassword;
+      a.pin = newPassword;
+    }
+  });
 
   saveState();
   mainModal.hide();
@@ -3701,12 +3855,16 @@ function saveTeacherPassword(e, username){
   });
 
   if (state.settings?.gasApiUrl) {
-    callGasApi('update_teacher_password', {
-      username: uLower,
-      newPassword: newPassword
-    });
     callGasApi('save_account', {
       accountData: acc
+    });
+    callGasApi('update_teacher_password', {
+      username: uLower,
+      newPassword: newPassword,
+      fullname: acc.fullname,
+      role: acc.role,
+      assignedClass: acc.assignedClass,
+      assignedGroup: acc.assignedGroup
     });
   }
 }
