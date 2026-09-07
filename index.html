@@ -302,15 +302,33 @@ const LEGACY_SAMPLE_ROSTER=[["Nguyễn Hải Đăng","Nam"],["Trần Quỳnh Chi
 const DEFAULT_COMPETITION_CRITERIA=[{"id":"ht_chuanbi","category":"Học tập","label":"Chuẩn bị bài/dụng cụ đầy đủ, gương mẫu","points":1,"icon":"📚"},{"id":"ht_phatbieu","category":"Học tập","label":"Phát biểu/xây dựng bài tốt","points":2,"icon":"💡"},{"id":"ht_xuatsac","category":"Học tập","label":"Bài kiểm tra/sản phẩm học tập xuất sắc","points":3,"icon":"🏆"},{"id":"ht_tienbo","category":"Học tập","label":"Có tiến bộ rõ rệt","points":2,"icon":"📈"},{"id":"ht_hotro","category":"Học tập","label":"Hỗ trợ bạn học tích cực","points":2,"icon":"🤝"},{"id":"ht_thieudungcu","category":"Học tập","label":"Không chuẩn bị bài hoặc thiếu dụng cụ","points":-1,"icon":"📕"},{"id":"ht_khongbai","category":"Học tập","label":"Không làm/không hoàn thành bài tập","points":-2,"icon":"📝"},{"id":"ht_mat_taptrung","category":"Học tập","label":"Mất tập trung/làm việc riêng trong giờ","points":-1,"icon":"😶"},{"id":"ht_gianlan","category":"Học tập","label":"Gian lận/quay cóp trong học tập","points":-5,"icon":"⛔"},{"id":"nn_guongmau","category":"Nề nếp","label":"Thực hiện nội quy gương mẫu","points":2,"icon":"⭐"},{"id":"nn_viectot","category":"Nề nếp","label":"Việc tốt/giúp đỡ bạn, tập thể","points":2,"icon":"💚"},{"id":"nn_xephang","category":"Nề nếp","label":"Xếp hàng/chuyển tiết nghiêm túc","points":1,"icon":"✅"},{"id":"nn_noichuyen","category":"Nề nếp","label":"Nói chuyện riêng trong giờ","points":-1,"icon":"💬"},{"id":"nn_mattrattu","category":"Nề nếp","label":"Gây mất trật tự/ảnh hưởng lớp","points":-2,"icon":"🔊"},{"id":"nn_doicho","category":"Nề nếp","label":"Tự ý đổi chỗ/rời vị trí","points":-2,"icon":"🪑"},{"id":"nn_roilop","category":"Nề nếp","label":"Tự ý ra khỏi lớp/không chấp hành yêu cầu","points":-3,"icon":"🚪"},{"id":"nn_vo_le","category":"Nề nếp","label":"Thiếu lễ phép/xúc phạm người khác","points":-5,"icon":"⚠️"},{"id":"tp_guongmau","category":"Tác phong","label":"Đồng phục, tác phong gương mẫu","points":1,"icon":"👔"},{"id":"tp_dongphuc","category":"Tác phong","label":"Sai/thiếu đồng phục","points":-1,"icon":"👕"},{"id":"tp_bangten","category":"Tác phong","label":"Thiếu bảng tên/khăn quàng theo quy định","points":-1,"icon":"🏷️"},{"id":"tp_dienthoai","category":"Tác phong","label":"Sử dụng điện thoại trái phép","points":-3,"icon":"📱"},{"id":"vs_trucnhat_tot","category":"Vệ sinh","label":"Trực nhật hoàn thành tốt","points":2,"icon":"🧹"},{"id":"vs_giuvesinh","category":"Vệ sinh","label":"Giữ vệ sinh lớp/khu vực tốt","points":1,"icon":"✨"},{"id":"vs_khongtruc","category":"Vệ sinh","label":"Không thực hiện trực nhật","points":-2,"icon":"🗑️"},{"id":"vs_xarac","category":"Vệ sinh","label":"Xả rác/không giữ vệ sinh","points":-1,"icon":"🚯"},{"id":"tt_nhiemvu","category":"Tập thể & trách nhiệm","label":"Hoàn thành xuất sắc nhiệm vụ lớp","points":3,"icon":"🎯"},{"id":"tt_phongtrao","category":"Tập thể & trách nhiệm","label":"Tham gia phong trào tích cực","points":2,"icon":"🎉"},{"id":"tt_hotro","category":"Tập thể & trách nhiệm","label":"Chủ động hỗ trợ công việc chung","points":1,"icon":"🙌"},{"id":"tt_khongnhiemvu","category":"Tập thể & trách nhiệm","label":"Không thực hiện nhiệm vụ được giao","points":-2,"icon":"📌"},{"id":"tt_anhhuong","category":"Tập thể & trách nhiệm","label":"Vi phạm làm ảnh hưởng thi đua tập thể","points":-3,"icon":"📉"},{"id":"ts_baove","category":"Tài sản & an toàn","label":"Có ý thức bảo vệ/phát hiện sự cố tài sản","points":2,"icon":"🛡️"},{"id":"ts_saidung","category":"Tài sản & an toàn","label":"Sử dụng thiết bị/tài sản không đúng quy định","points":-2,"icon":"🔧"},{"id":"ts_huhong","category":"Tài sản & an toàn","label":"Làm hư hỏng tài sản do thiếu ý thức","points":-3,"icon":"💥"},{"id":"ts_nguyhiem","category":"Tài sản & an toàn","label":"Đánh nhau/hành vi gây mất an toàn","points":-5,"icon":"🚨"}];
 const SUBJECTS=['Ghi chung / Nề nếp','Toán','Tiếng Việt','Tiếng Anh','Tự nhiên & Xã hội','Khoa học','Lịch sử & Địa lý','Tin học','Công nghệ','Mĩ thuật','Âm nhạc','Giáo dục thể chất','Đạo đức','Hoạt động trải nghiệm','Sinh hoạt lớp','Chào cờ'];
 const DAYS=['Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu'];
-const TIMETABLE_SLOT_DEFAULTS={HDG:'12g15 - 12g30',T1:'12g30 - 13g15',T2:'13g20 - 14g05',T3:'14g10 - 14g55',BREAK:'14g55 - 15g20',T4:'15g20 - 16g05',T5:'16g10 - 16g55'};
+const TIMETABLE_SLOT_MORNING = {
+  HDG: '6:45 - 7:00',
+  T1: '7:00 - 7:45',
+  T2: '7:50 - 8:35',
+  T3: '8:40 - 9:25',
+  BREAK: '9:25 - 9:50',
+  T4: '9:50 - 10:35',
+  T5: '10:40 - 11:25'
+};
+const TIMETABLE_SLOT_AFTERNOON = {
+  HDG: '12:15 - 12:30',
+  T1: '12:30 - 13:15',
+  T2: '13:20 - 14:05',
+  T3: '14:10 - 14:55',
+  BREAK: '14:55 - 15:20',
+  T4: '15:20 - 16:05',
+  T5: '16:10 - 16:55'
+};
+const TIMETABLE_SLOT_DEFAULTS = TIMETABLE_SLOT_AFTERNOON;
 const TIMETABLE_SLOT_META=[
- {id:'HDG',label:'SHL đầu giờ',editable:true},
- {id:'T1',label:'Tiết 1',editable:true},
- {id:'T2',label:'Tiết 2',editable:true},
- {id:'T3',label:'Tiết 3',editable:true},
- {id:'BREAK',label:'Ra chơi',editable:false},
- {id:'T4',label:'Tiết 4',editable:true},
- {id:'T5',label:'Tiết 5',editable:true}
+  {id:'HDG',label:'Truy bài đầu giờ',shortLabel:'Truy bài',editable:true},
+  {id:'T1',label:'Tiết 1',shortLabel:'Tiết 1',editable:true},
+  {id:'T2',label:'Tiết 2',shortLabel:'Tiết 2',editable:true},
+  {id:'T3',label:'Tiết 3',shortLabel:'Tiết 3',editable:true},
+  {id:'BREAK',label:'Ra chơi',shortLabel:'Ra chơi',editable:false},
+  {id:'T4',label:'Tiết 4',shortLabel:'Tiết 4',editable:true},
+  {id:'T5',label:'Tiết 5',shortLabel:'Tiết 5',editable:true}
 ];
 const NAV=[
   ['home','fa-house','Trang chủ',''],['classes','fa-school','Lớp học',''],['students','fa-graduation-cap','Học sinh','count'],['attendance','fa-clipboard-check','Điểm danh',''],['competition','fa-trophy','Thi đua tuần','HOT'],['seating','fa-border-all','Sơ đồ lớp',''],['timetable','fa-calendar-days','Thời khóa biểu',''],['rewards','fa-gift','Đổi quà','HOT'],['wheel','fa-wand-magic-sparkles','Vòng quay','HOT'],['film','fa-film','Cuộn phim','NEW'],['noise','fa-shield-halved','Chống ồn',''],['countdown','fa-stopwatch','Đếm ngược',''],['links','fa-link','Liên kết',''],['stats','fa-chart-column','Thống kê',''],['data','fa-database','Dữ liệu',''],['settings','fa-gear','Cài đặt','']
@@ -323,8 +341,34 @@ function today(){const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getF
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function initials(name){return (name||'?').split(/\s+/).filter(Boolean).slice(-2).map(x=>x[0]).join('').toUpperCase()}
 function deskAssignment(val){if(val&&typeof val==='object')return {left:String(val.left||''),right:String(val.right||'')};if(typeof val==='string'&&val)return {left:val,right:''};return {left:'',right:''}}
-function flattenDeskAssignments(assignments){const ids=[];Object.values(assignments||{}).forEach(v=>{const d=deskAssignment(v);if(d.left)ids.push(d.left);if(d.right)ids.push(d.right)});return ids}
-function timetableSlotTime(id){return state.timetable?.slotTimes?.[id]||TIMETABLE_SLOT_DEFAULTS[id]||''}
+function getClassSession(classId = (state?.activeClassId || '')){
+  const c = state?.classes?.find(x => x.id === classId);
+  if (c && (c.session === 'morning' || c.session === 'afternoon')) {
+    return c.session;
+  }
+  const gradeStr = String(c?.grade || c?.name || '');
+  if (/7|9/.test(gradeStr)) return 'morning'; // Khối 7, 9 học Buổi Sáng
+  return 'afternoon'; // Khối 6, 8 học Buổi Chiều
+}
+
+function timetableSlotTime(id, session){
+  const sess = session || (state?.timetable?.viewSession || getClassSession());
+  if(sess === 'morning'){
+    return state?.timetable?.slotTimesMorning?.[id] || TIMETABLE_SLOT_MORNING[id] || '';
+  }
+  return state?.timetable?.slotTimesAfternoon?.[id] || state?.timetable?.slotTimes?.[id] || TIMETABLE_SLOT_AFTERNOON[id] || '';
+}
+
+function timeSlots(session){
+  const sess = session || (state?.timetable?.viewSession || getClassSession());
+  return TIMETABLE_SLOT_META.map(slot => ({
+    id: slot.id,
+    label: slot.label,
+    shortLabel: slot.shortLabel || slot.label,
+    time: timetableSlotTime(slot.id, sess),
+    editable: slot.editable
+  }));
+}
 function normalizeSlotId(id){const map={S1:'T1',S2:'T2',S3:'T3',S4:'T4',S5:'T5',C1:'T1',C2:'T2',C3:'T3',C4:'T4',C5:'T5'};return map[id]||id||'T1'}
 function esc(v=''){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function safeId(v,p='id'){const s=String(v||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80);return s||uid(p)}
@@ -343,7 +387,7 @@ function normalizeCompetition(raw,classes,students){const d=defaultCompetition(s
 
 function normalizeState(raw){
  const d=defaultState(),x=(raw&&typeof raw==='object')?raw:{};
-  const classes=Array.isArray(x.classes)&&x.classes.length?x.classes.map((c,i)=>({id:safeId(c?.id,'class'),name:String(c?.name||`Lớp ${i+1}`).slice(0,80),grade:String(c?.grade||'').slice(0,40),year:String(c?.year||'').slice(0,40),teacherName:String(c?.teacherName||'').slice(0,120),color:/^#[0-9a-f]{6}$/i.test(c?.color||'')?c.color:'#0d9488'})):d.classes;
+  const classes=Array.isArray(x.classes)&&x.classes.length?x.classes.map((c,i)=>({id:safeId(c?.id,'class'),name:String(c?.name||`Lớp ${i+1}`).slice(0,80),grade:String(c?.grade||'').slice(0,40),year:String(c?.year||'').slice(0,40),teacherName:String(c?.teacherName||'').slice(0,120),session:['morning','afternoon'].includes(c?.session)?c.session:'',color:/^#[0-9a-f]{6}$/i.test(c?.color||'')?c.color:'#0d9488'})):d.classes;
   const classIds=new Set(classes.map(c=>c.id));
  const students=Array.isArray(x.students)?x.students.filter(s=>classIds.has(String(s?.classId||''))).map((s,i)=>({
    id:safeId(s?.id,'s'),
@@ -358,12 +402,25 @@ function normalizeState(raw){
    favorite:!!s?.favorite,
    note:String(s?.note||'').slice(0,1000)
  })):[];
- const studentIds=new Set(students.map(s=>s.id));
- const attendance={};if(x.attendance&&typeof x.attendance==='object')Object.entries(x.attendance).forEach(([k,v])=>{if(!v||typeof v!=='object')return;const classId=classes.find(c=>k.startsWith(c.id+'_'))?.id;if(!classId)return;const row={};Object.entries(v).forEach(([sid,st])=>{if(studentIds.has(sid)&&ATTENDANCE_STATUSES.includes(st))row[sid]=st});attendance[k]=row});
- const seating={};classes.forEach(c=>{const src=x.seating?.[c.id]||{};const assignments={};let oldSingleCount=0;if(src.assignments&&typeof src.assignments==='object')Object.entries(src.assignments).forEach(([seat,val])=>{const seatNum=Math.max(0,parseInt(seat)||0);if(typeof val==='string'){if(studentIds.has(val)){const deskKey=String(Math.floor(seatNum/2)),side=seatNum%2===0?'left':'right';assignments[deskKey]=deskAssignment(assignments[deskKey]);assignments[deskKey][side]=val;oldSingleCount++;}}else if(val&&typeof val==='object'){const left=studentIds.has(String(val.left||''))?String(val.left):'';const right=studentIds.has(String(val.right||''))?String(val.right):'';if(left||right)assignments[String(seatNum)]={left,right};}});const fallbackDesks=Math.max(4,Math.ceil(students.filter(s=>s.classId===c.id).length/2));const rawSeats=Math.max(1,+src.seats||fallbackDesks);const deskCount=oldSingleCount?Math.max(fallbackDesks,Math.ceil(rawSeats/2)):Math.max(1,Math.min(50,rawSeats));seating[c.id]={lanes:[2,3,4,5,6].includes(+src.lanes)?+src.lanes:4,seats:deskCount,mode:src.mode==='3d'?'3d':'2d',assignments}});
- const subjects=Array.isArray(x.subjects)&&x.subjects.length?x.subjects.map(v=>String(v).trim()).filter(Boolean).slice(0,80):d.subjects;
- const slotTimes=Object.assign({},TIMETABLE_SLOT_DEFAULTS);if(x.timetable?.slotTimes&&typeof x.timetable.slotTimes==='object')Object.keys(TIMETABLE_SLOT_DEFAULTS).forEach(k=>{const v=String(x.timetable.slotTimes[k]||'').trim();if(v)slotTimes[k]=v.slice(0,30)});
- const entries=Array.isArray(x.timetable?.entries)?x.timetable.entries.filter(e=>classIds.has(String(e?.classId||''))&&Number.isInteger(+e?.day)&&+e.day>=0&&+e.day<=4).map(e=>({id:safeId(e.id,'tt'),classId:String(e.classId),day:+e.day,slot:normalizeSlotId(String(e.slot||'T1').slice(0,8)),subject:String(e.subject||'').slice(0,120),time:String(e.time||'').slice(0,60)})).filter(e=>TIMETABLE_SLOT_META.some(s=>s.id===e.slot&&s.editable)):[];
+  const studentIds=new Set(students.map(s=>s.id));
+  const attendance={};if(x.attendance&&typeof x.attendance==='object')Object.entries(x.attendance).forEach(([k,v])=>{if(!v||typeof v!=='object')return;const classId=classes.find(c=>k.startsWith(c.id+'_'))?.id;if(!classId)return;const row={};Object.entries(v).forEach(([sid,st])=>{if(studentIds.has(sid)&&ATTENDANCE_STATUSES.includes(st))row[sid]=st});attendance[k]=row});
+  const seating={};classes.forEach(c=>{const src=x.seating?.[c.id]||{};const assignments={};let oldSingleCount=0;if(src.assignments&&typeof src.assignments==='object')Object.entries(src.assignments).forEach(([seat,val])=>{const seatNum=Math.max(0,parseInt(seat)||0);if(typeof val==='string'){if(studentIds.has(val)){const deskKey=String(Math.floor(seatNum/2)),side=seatNum%2===0?'left':'right';assignments[deskKey]=deskAssignment(assignments[deskKey]);assignments[deskKey][side]=val;oldSingleCount++;}}else if(val&&typeof val==='object'){const left=studentIds.has(String(val.left||''))?String(val.left):'';const right=studentIds.has(String(val.right||''))?String(val.right):'';if(left||right)assignments[String(seatNum)]={left,right};}});const fallbackDesks=Math.max(4,Math.ceil(students.filter(s=>s.classId===c.id).length/2));const rawSeats=Math.max(1,+src.seats||fallbackDesks);const deskCount=oldSingleCount?Math.max(fallbackDesks,Math.ceil(rawSeats/2)):Math.max(1,Math.min(50,rawSeats));seating[c.id]={lanes:[2,3,4,5,6].includes(+src.lanes)?+src.lanes:4,seats:deskCount,mode:src.mode==='3d'?'3d':'2d',assignments}});
+  const subjects=Array.isArray(x.subjects)&&x.subjects.length?x.subjects.map(v=>String(v).trim()).filter(Boolean).slice(0,80):d.subjects;
+  const slotTimesMorning = Object.assign({}, TIMETABLE_SLOT_MORNING);
+  if(x.timetable?.slotTimesMorning && typeof x.timetable.slotTimesMorning === 'object') {
+    Object.keys(TIMETABLE_SLOT_MORNING).forEach(k => {
+      const v = String(x.timetable.slotTimesMorning[k] || '').trim();
+      if(v) slotTimesMorning[k] = v.slice(0, 30);
+    });
+  }
+  const slotTimesAfternoon = Object.assign({}, TIMETABLE_SLOT_AFTERNOON);
+  const srcAfternoon = (x.timetable?.slotTimesAfternoon && typeof x.timetable.slotTimesAfternoon === 'object') ? x.timetable.slotTimesAfternoon : (x.timetable?.slotTimes && typeof x.timetable.slotTimes === 'object' ? x.timetable.slotTimes : {});
+  Object.keys(TIMETABLE_SLOT_AFTERNOON).forEach(k => {
+    const v = String(srcAfternoon[k] || '').trim();
+    if(v) slotTimesAfternoon[k] = v.slice(0, 30);
+  });
+  const slotTimes = slotTimesAfternoon;
+  const entries=Array.isArray(x.timetable?.entries)?x.timetable.entries.filter(e=>classIds.has(String(e?.classId||''))&&Number.isInteger(+e?.day)&&+e.day>=0&&+e.day<=4).map(e=>({id:safeId(e.id,'tt'),classId:String(e.classId),day:+e.day,slot:normalizeSlotId(String(e.slot||'T1').slice(0,8)),subject:String(e.subject||'').slice(0,120),time:String(e.time||'').slice(0,60)})).filter(e=>TIMETABLE_SLOT_META.some(s=>s.id===e.slot&&s.editable)):[];
  const transactions=Array.isArray(x.transactions)?x.transactions.filter(t=>classIds.has(String(t?.classId||''))&&studentIds.has(String(t?.studentId||''))).map(t=>({id:safeId(t.id,'tx'),classId:String(t.classId),studentId:String(t.studentId),studentName:String(t.studentName||students.find(s=>s.id===t.studentId)?.name||'').slice(0,120),amount:finiteNum(t.amount,0),reason:String(t.reason||'Điều chỉnh xu').slice(0,300),subject:String(t.subject||'Ghi chung / Nề nếp').slice(0,120),time:isNaN(Date.parse(t.time))?new Date().toISOString():new Date(t.time).toISOString()})):[];
  const ledgerTotals={};transactions.forEach(t=>ledgerTotals[t.studentId]=(ledgerTotals[t.studentId]||0)+t.amount);students.forEach(s=>{const diff=(s.coins||0)-(ledgerTotals[s.id]||0);if(Math.abs(diff)>1e-9)transactions.push({id:uid('txm'),classId:s.classId,studentId:s.id,studentName:s.name,amount:diff,reason:'Đồng bộ số dư từ dữ liệu phiên bản trước',subject:'Ghi chung / Nề nếp',time:new Date().toISOString()})});
  const rewards=Array.isArray(x.rewards)?x.rewards.map(r=>({id:safeId(r.id,'r'),name:String(r.name||'Phần thưởng').slice(0,100),cost:Math.max(1,Math.floor(finiteNum(r.cost,1))),emoji:String(r.emoji||'🎁').slice(0,12),stock:Math.max(0,Math.floor(finiteNum(r.stock,0)))})):d.rewards;
@@ -373,7 +430,7 @@ function normalizeState(raw){
  const teacher={name:String(x.teacher?.name||d.teacher.name).slice(0,120),role:String(x.teacher?.role||d.teacher.role).slice(0,80),subject:String(x.teacher?.subject||d.teacher.subject).slice(0,100),school:String(x.teacher?.school||d.teacher.school).slice(0,160),avatar:safeAvatar(x.teacher?.avatar)};
  const settings={...d.settings,...(x.settings&&typeof x.settings==='object'?x.settings:{}),gasApiUrl:String(x.settings?.gasApiUrl||localStorage.getItem('gas_api_url')||DEFAULT_GAS_API_URL).trim(),wheelExclude:x.settings?.wheelExclude!==false,filmExclude:x.settings?.filmExclude!==false,tickLast10:!!x.settings?.tickLast10,timerColor:/^#[0-9a-f]{6}$/i.test(x.settings?.timerColor||'')?x.settings.timerColor:'#0d9488',wheelEffectMode:x.settings?.wheelEffectMode==='fixed'?'fixed':'random'};
  const active=classIds.has(String(x.activeClassId||''))?String(x.activeClassId):classes[0].id;
- return {version:APP_SCHEMA_VERSION,rosterVersion:String(x.rosterVersion||'').slice(0,80),activeClassId:active,currentPage:PAGE_META[x.currentPage]?x.currentPage:'home',teacher,classes,students,attendance,attendanceDate:/^\d{4}-\d{2}-\d{2}$/.test(x.attendanceDate||'')?x.attendanceDate:today(),seating,timetable:{morning:false,afternoon:true,morningCount:0,afternoonCount:5,slotTimes,entries},rewards,redemptions,transactions,wheelHistory:historyFilter(x.wheelHistory),filmHistory:historyFilter(x.filmHistory),links,subjects,settings,wheelExcluded:Array.isArray(x.wheelExcluded)?x.wheelExcluded.filter(id=>studentIds.has(id)):[],filmExcluded:Array.isArray(x.filmExcluded)?x.filmExcluded.filter(id=>studentIds.has(id)):[],wheelGroup:['all','favorite','manual'].includes(x.wheelGroup)?x.wheelGroup:'all',wheelEffect:['Xoáy tròn','Tung nảy','Hút vào tâm','Bay theo quỹ đạo','Mưa bóng','Sân khấu ánh sáng','Sóng bồng bềnh'].includes(x.wheelEffect)?x.wheelEffect:'Xoáy tròn',wheelSelected:Array.isArray(x.wheelSelected)?x.wheelSelected.filter(id=>studentIds.has(id)):[],competition:normalizeCompetition(x.competition,classes,students)};
+ return {version:APP_SCHEMA_VERSION,rosterVersion:String(x.rosterVersion||'').slice(0,80),activeClassId:active,currentPage:PAGE_META[x.currentPage]?x.currentPage:'home',teacher,classes,students,attendance,attendanceDate:/^\d{4}-\d{2}-\d{2}$/.test(x.attendanceDate||'')?x.attendanceDate:today(),seating,timetable:{morning:true,afternoon:true,morningCount:5,afternoonCount:5,slotTimes,slotTimesMorning,slotTimesAfternoon,viewSession:['morning','afternoon'].includes(x.timetable?.viewSession)?x.timetable.viewSession:'',entries},rewards,redemptions,transactions,wheelHistory:historyFilter(x.wheelHistory),filmHistory:historyFilter(x.filmHistory),links,subjects,settings,wheelExcluded:Array.isArray(x.wheelExcluded)?x.wheelExcluded.filter(id=>studentIds.has(id)):[],filmExcluded:Array.isArray(x.filmExcluded)?x.filmExcluded.filter(id=>studentIds.has(id)):[],wheelGroup:['all','favorite','manual'].includes(x.wheelGroup)?x.wheelGroup:'all',wheelEffect:['Xoáy tròn','Tung nảy','Hút vào tâm','Bay theo quỹ đạo','Mưa bóng','Sân khấu ánh sáng','Sóng bồng bềnh'].includes(x.wheelEffect)?x.wheelEffect:'Xoáy tròn',wheelSelected:Array.isArray(x.wheelSelected)?x.wheelSelected.filter(id=>studentIds.has(id)):[],competition:normalizeCompetition(x.competition,classes,students)};
 }
 
 function defaultState(){
@@ -396,18 +453,25 @@ function defaultState(){
   version:APP_SCHEMA_VERSION, rosterVersion:ROSTER_VERSION, activeClassId:cls, currentPage:'home',
   teacher:{name:'Lê Tâm',role:'GVCN',subject:'Toán',school:'THCS Quang Trung',avatar:''},
   classes:[
-    {id:cls,name:'8A6',grade:'Khối 8',year:'2026 - 2027',teacherName:'Lê Tâm',color:'#0d9488'},
-    {id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',teacherName:'Nguyễn Văn A',color:'#0284c7'}
+    {id:cls,name:'8A6',grade:'Khối 8',year:'2026 - 2027',teacherName:'Lê Tâm',session:'afternoon',color:'#0d9488'},
+    {id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',teacherName:'Nguyễn Văn A',session:'afternoon',color:'#0284c7'}
   ],students,
   attendance:{},attendanceDate:today(),
   seating:{[cls]:{lanes:4,seats:Math.ceil(students.length/2),mode:'2d',assignments:{}}},
-  timetable:{morning:false,afternoon:true,morningCount:0,afternoonCount:5,slotTimes:Object.assign({},TIMETABLE_SLOT_DEFAULTS),entries:[
-    {id:uid('tt'),classId:cls,day:0,slot:'HDG',subject:'SHL đầu giờ',time:TIMETABLE_SLOT_DEFAULTS.HDG},
-    {id:uid('tt'),classId:cls,day:1,slot:'T1',subject:'Toán',time:TIMETABLE_SLOT_DEFAULTS.T1},
-    {id:uid('tt'),classId:cls,day:2,slot:'T2',subject:'Ngữ văn',time:TIMETABLE_SLOT_DEFAULTS.T2},
-    {id:uid('tt'),classId:cls,day:3,slot:'T3',subject:'Tin học',time:TIMETABLE_SLOT_DEFAULTS.T3},
-    {id:uid('tt'),classId:cls,day:4,slot:'T5',subject:'Sinh hoạt lớp',time:TIMETABLE_SLOT_DEFAULTS.T5}
-  ]},
+  timetable:{
+    morning:true,afternoon:true,morningCount:5,afternoonCount:5,
+    slotTimes:Object.assign({},TIMETABLE_SLOT_AFTERNOON),
+    slotTimesMorning:Object.assign({},TIMETABLE_SLOT_MORNING),
+    slotTimesAfternoon:Object.assign({},TIMETABLE_SLOT_AFTERNOON),
+    viewSession:'afternoon',
+    entries:[
+      {id:uid('tt'),classId:cls,day:0,slot:'HDG',subject:'SHL đầu giờ',time:TIMETABLE_SLOT_AFTERNOON.HDG},
+      {id:uid('tt'),classId:cls,day:1,slot:'T1',subject:'Toán',time:TIMETABLE_SLOT_AFTERNOON.T1},
+      {id:uid('tt'),classId:cls,day:2,slot:'T2',subject:'Ngữ văn',time:TIMETABLE_SLOT_AFTERNOON.T2},
+      {id:uid('tt'),classId:cls,day:3,slot:'T3',subject:'Tin học',time:TIMETABLE_SLOT_AFTERNOON.T3},
+      {id:uid('tt'),classId:cls,day:4,slot:'T5',subject:'Sinh hoạt lớp',time:TIMETABLE_SLOT_AFTERNOON.T5}
+    ]
+  },
   rewards:[{id:'r1',name:'Bút',cost:10,emoji:'🖊️',stock:10},{id:'r2',name:'Thước',cost:15,emoji:'📏',stock:8},{id:'r3',name:'Sticker',cost:5,emoji:'🌟',stock:30},{id:'r4',name:'Sổ tay',cost:25,emoji:'📒',stock:5}],
   redemptions:[],transactions:[],wheelHistory:[],filmHistory:[],links:[{id:'l1',name:'Học liệu lớp học',url:'https://',category:'Học liệu & SGK',desc:'Liên kết mẫu - hãy chỉnh sửa',pinned:true}],
   subjects:SUBJECTS.slice(), settings:{gasApiUrl:localStorage.getItem('gas_api_url')||DEFAULT_GAS_API_URL,wheelExclude:true,filmExclude:true,tickLast10:false,timerColor:'#0d9488'},
@@ -840,11 +904,11 @@ function switchClass(id){state.activeClassId=id;state.wheelExcluded=[];state.fil
 function renderPage(){chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});chartRefs=[];const root=document.getElementById('appContent');root.classList.remove('fade-in');void root.offsetWidth;root.classList.add('fade-in');const fn={home:renderHome,classes:renderClasses,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;root.innerHTML=fn(); setTimeout(afterRender,0)}
 function afterRender(){if(state.currentPage==='home')drawHomeChart();if(state.currentPage==='stats')drawStatsCharts();if(state.currentPage==='competition')drawCompetitionChart();if(state.currentPage==='wheel')positionWheelBalls();if(state.currentPage==='countdown')updateCountdownUI()}
 function logTransaction(studentId,amount,reason='Điều chỉnh xu',subject='Ghi chung / Nề nếp'){const s=state.students.find(x=>x.id===studentId);if(!s)return 0;const before=Math.max(0,finiteNum(s.coins,0)),requested=finiteNum(amount,0),after=Math.max(0,before+requested),applied=after-before;if(!applied)return 0;s.coins=after;state.transactions.unshift({id:uid('tx'),classId:s.classId,studentId,studentName:s.name,amount:applied,reason,subject,time:new Date().toISOString()});saveState(false);return applied}
-function renderHome(){const ss=classStudents(),att=state.attendance[state.activeClassId+'_'+today()]||{},present=ss.filter(st=>att[st.id]==='present').length,marked=ss.filter(st=>att[st.id]&&att[st.id]!=='unmarked').length,totalCoins=ss.reduce((a,st)=>a+(st.coins||0),0),ws=weekStartDate(today()),rows=competitionRows(ws),avg=rows.length?rows.reduce((a,r)=>a+r.total,0)/rows.length:state.competition.baseScore,top=rows.slice(0,5);const dow=new Date().getDay(),slotOrder=timeSlots().filter(s=>s.editable).map(s=>s.id),todayLessons=(dow>=1&&dow<=5)?state.timetable.entries.filter(e=>e.classId===state.activeClassId&&e.day===dow-1).sort((a,b)=>slotOrder.indexOf(a.slot)-slotOrder.indexOf(b.slot)):[];return `
+function renderHome(){const ss=classStudents(),att=state.attendance[state.activeClassId+'_'+today()]||{},present=ss.filter(st=>att[st.id]==='present').length,marked=ss.filter(st=>att[st.id]&&att[st.id]!=='unmarked').length,totalCoins=ss.reduce((a,st)=>a+(st.coins||0),0),ws=weekStartDate(today()),rows=competitionRows(ws),avg=rows.length?rows.reduce((a,r)=>a+r.total,0)/rows.length:state.competition.baseScore,top=rows.slice(0,5);const curSess=getClassSession(),sessionBadge=curSess==='morning'?'<span class="badge bg-warning text-dark"><i class="fa-solid fa-sun me-1"></i>Buổi Sáng (Khối 7, 9)</span>':'<span class="badge bg-info text-dark"><i class="fa-solid fa-cloud-sun me-1"></i>Buổi Chiều (Khối 6, 8)</span>';const dow=new Date().getDay(),slotOrder=timeSlots(curSess).filter(s=>s.editable).map(s=>s.id),todayLessons=(dow>=1&&dow<=5)?state.timetable.entries.filter(e=>e.classId===state.activeClassId&&e.day===dow-1).sort((a,b)=>slotOrder.indexOf(a.slot)-slotOrder.indexOf(b.slot)):[];return `
 <div class="section-head"><div><h2><i class="fa-solid fa-sparkles text-primary me-2"></i>Chào mừng đến lớp ${esc(activeClass().name)}</h2><p>V5 liên thông điểm danh, nề nếp và báo cáo thi đua 100 điểm/tuần.</p></div><div class="d-flex gap-2"><button class="btn btn-outline-primary" onclick="navigate('attendance')"><i class="fa-solid fa-clipboard-check me-1"></i> Điểm danh</button><button class="btn btn-primary" onclick="navigate('competition')"><i class="fa-solid fa-trophy me-1"></i> Thi đua tuần</button></div></div>
 <div class="stats-grid mb-3"><div class="stat-card"><div class="label">Sĩ số lớp</div><div class="value">${ss.length}</div><small>${activeClass().grade}</small><i class="fa-solid fa-users"></i></div><div class="stat-card"><div class="label">Đi học hôm nay</div><div class="value">${present}/${ss.length}</div><small>${marked?Math.round(present/marked*100):0}% trên ${marked}/${ss.length} HS đã điểm danh</small><i class="fa-solid fa-clipboard-check"></i></div><div class="stat-card"><div class="label">Điểm TB tuần</div><div class="value">${avg.toFixed(1)}</div><small>Điểm gốc ${state.competition.baseScore} · ${weekLabel(ws)}</small><i class="fa-solid fa-trophy"></i></div><div class="stat-card"><div class="label">Tổng xu hiện có</div><div class="value">${totalCoins}</div><small>Xu đổi quà tách riêng điểm thi đua</small><i class="fa-solid fa-coins"></i></div></div>
 <div class="grid-2 mt-3"><div class="card p-3"><div class="d-flex justify-content-between align-items-center mb-2"><h5 class="fw-bold m-0">Điểm thi đua tuần</h5><span class="badge bg-success">100 điểm gốc</span></div><div style="height:280px"><canvas id="homeChart"></canvas></div></div><div class="card p-3"><h5 class="fw-bold">Top thi đua tuần</h5>${top.length?top.map((r,i)=>competitionRankMini(r,i)).join(''):'<div class="empty">Chưa có học sinh</div>'}</div></div>
-<div class="grid-equal mt-3"><div class="card p-3"><div class="d-flex justify-content-between"><h5 class="fw-bold">Thời khóa biểu hôm nay</h5><button class="btn btn-sm btn-outline-primary" onclick="navigate('timetable')">Xem lịch</button></div>${todayLessons.length?todayLessons.map(l=>`<div class="lesson mt-2"><strong>${esc(l.subject)}</strong><div class="text-muted">${esc(l.time)}</div></div>`).join(''):'<div class="empty">Hôm nay chưa có tiết học được xếp.</div>'}</div><div class="card p-3"><h5 class="fw-bold">Thao tác nhanh</h5><div class="d-grid gap-2 mt-2"><button class="btn btn-outline-primary text-start" onclick="navigate('competition')"><i class="fa-solid fa-plus-minus me-2"></i>Ghi nhận cộng/trừ nề nếp</button><button class="btn btn-outline-primary text-start" onclick="navigate('seating')"><i class="fa-solid fa-border-all me-2"></i>Xếp sơ đồ chỗ ngồi</button><button class="btn btn-outline-primary text-start" onclick="navigate('countdown')"><i class="fa-solid fa-stopwatch me-2"></i>Mở đồng hồ đếm ngược</button></div></div></div>`}
+<div class="grid-equal mt-3"><div class="card p-3"><div class="d-flex justify-content-between align-items-center mb-2"><div><h5 class="fw-bold m-0">Thời khóa biểu hôm nay</h5><div class="mt-1">${sessionBadge}</div></div><button class="btn btn-sm btn-outline-primary" onclick="navigate('timetable')">Xem lịch</button></div>${todayLessons.length?todayLessons.map(l=>{const slMeta=TIMETABLE_SLOT_META.find(s=>s.id===l.slot);const sTime=timetableSlotTime(l.slot,curSess)||l.time;return `<div class="lesson mt-2"><strong>${esc(l.subject)}</strong><div class="text-muted"><span class="badge bg-light text-secondary border me-1">${esc(slMeta?.label||l.slot)}</span>${esc(sTime)}</div></div>`}).join(''):'<div class="empty">Hôm nay chưa có tiết học được xếp.</div>'}</div><div class="card p-3"><h5 class="fw-bold">Thao tác nhanh</h5><div class="d-grid gap-2 mt-2"><button class="btn btn-outline-primary text-start" onclick="navigate('competition')"><i class="fa-solid fa-plus-minus me-2"></i>Ghi nhận cộng/trừ nề nếp</button><button class="btn btn-outline-primary text-start" onclick="navigate('seating')"><i class="fa-solid fa-border-all me-2"></i>Xếp sơ đồ chỗ ngồi</button><button class="btn btn-outline-primary text-start" onclick="navigate('countdown')"><i class="fa-solid fa-stopwatch me-2"></i>Mở đồng hồ đếm ngược</button></div></div></div>`}
 function rankRow(s,i){const max=Math.max(1,...classStudents().map(x=>x.coins||0));return `<div class="rank-row"><div class="rank-no">${i+1}</div>${renderAvatar(s,'mini-avatar')}<div><div class="fw-bold">${esc(s.name)}</div><div class="progress-thin"><div style="width:${Math.round((s.coins||0)/max*100)}%"></div></div></div><span class="coin-pill"><i class="fa-solid fa-coins"></i>${s.coins||0}</span></div>`}
 function drawHomeChart(){const ctx=document.getElementById('homeChart');if(!ctx)return;const rows=competitionRows(weekStartDate(today())).slice(0,8);chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(13,148,136,.65)',borderColor:'#0d9488',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,suggestedMin:60}}}}))}
 function renderClasses(){
@@ -865,7 +929,12 @@ function renderClasses(){
         <div class="card hover-lift p-3">
           <div class="d-flex justify-content-between align-items-start">
             <div class="avatar">${esc(c.name)}</div>
-            ${c.id===state.activeClassId?'<span class="badge bg-success align-self-start">Lớp đang chọn</span>':''}
+            <div class="d-flex flex-column align-items-end gap-1">
+              ${c.id===state.activeClassId?'<span class="badge bg-success">Lớp đang chọn</span>':''}
+              <span class="badge ${getClassSession(c.id)==='morning'?'bg-warning text-dark':'bg-info text-dark'}">
+                ${getClassSession(c.id)==='morning'?'☀️ Sáng (K7, 9)':'🌤️ Chiều (K6, 8)'}
+              </span>
+            </div>
           </div>
           <h4 class="fw-bold mt-3 mb-1">${esc(c.name)}</h4>
           <div class="text-muted small">${esc(c.grade)} · Năm học ${esc(c.year)}</div>
@@ -887,7 +956,8 @@ function renderClasses(){
 }
 
 function openClassModal(id=''){
-  const c = state.classes.find(x => x.id === id) || { name: '', grade: 'Khối 6', year: '2026 - 2027', teacherName: '' };
+  const c = state.classes.find(x => x.id === id) || { name: '', grade: 'Khối 6', year: '2026 - 2027', teacherName: '', session: 'auto' };
+  const curSess = c.session || 'auto';
   showModal(id ? 'Sửa thông tin lớp học' : 'Tạo lớp học mới', `
     <form onsubmit="saveClass(event, '${id}')">
       <div class="mb-3">
@@ -900,13 +970,21 @@ function openClassModal(id=''){
         <small class="text-muted">Hệ thống sẽ tự động cập nhật tài khoản giáo viên cho lớp này.</small>
       </div>
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label fw-bold">Khối</label>
           <select id="cGrade" class="form-select">
             ${[1,2,3,4,5,6,7,8,9,10,11,12].map(g => `<option ${c.grade === 'Khối ' + g ? 'selected' : ''}>Khối ${g}</option>`).join('')}
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
+          <label class="form-label fw-bold">Buổi học</label>
+          <select id="cSession" class="form-select">
+            <option value="auto" ${curSess==='auto'?'selected':''}>Tự động (K7,9 Sáng / K6,8 Chiều)</option>
+            <option value="morning" ${curSess==='morning'?'selected':''}>☀️ Buổi Sáng (6h45 - 11h25)</option>
+            <option value="afternoon" ${curSess==='afternoon'?'selected':''}>🌤️ Buổi Chiều (12h15 - 16h55)</option>
+          </select>
+        </div>
+        <div class="col-md-4">
           <label class="form-label fw-bold">Năm học</label>
           <input id="cYear" class="form-control" value="${esc(c.year)}">
         </div>
@@ -923,8 +1001,9 @@ function saveClass(e, id){
   const name = document.getElementById('cName').value.trim();
   const teacherName = document.getElementById('cTeacherName').value.trim();
   const grade = document.getElementById('cGrade').value;
+  const session = document.getElementById('cSession')?.value || 'auto';
   const year = document.getElementById('cYear').value.trim();
-  const data = { name, teacherName, grade, year };
+  const data = { name, teacherName, grade, year, session };
 
   let targetId = id;
   if(id){
@@ -2275,13 +2354,248 @@ function seatByGroup(){const cfg=seatingCfg(),ss=classStudents(),groups=(state.c
 function clearSeats(){seatingCfg().assignments={};saveState();renderPage()}
 async function chooseSeat(idx){const cfg=seatingCfg();const current=deskAssignment(cfg.assignments[idx]);const currentIds=[current.left,current.right].filter(Boolean);const used=new Set(flattenDeskAssignments(cfg.assignments));currentIds.forEach(id=>used.delete(id));const options=classStudents().filter(s=>!used.has(s.id)||currentIds.includes(s.id));const opts=['<option value="">-- Để trống --</option>',...options.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`)].join('');const html=`<div class="text-start"><div class="small text-muted mb-2">Bàn ${idx+1} có 2 vị trí ngồi.</div><label class="form-label fw-bold">Vị trí 1</label><select id="deskLeft" class="form-select mb-3">${opts}</select><label class="form-label fw-bold">Vị trí 2</label><select id="deskRight" class="form-select">${opts}</select></div>`;await Swal.fire({title:'Chọn học sinh cho bàn '+(idx+1),html,showCancelButton:true,confirmButtonText:'Lưu xếp chỗ',didOpen:()=>{document.getElementById('deskLeft').value=current.left||'';document.getElementById('deskRight').value=current.right||''},preConfirm:()=>{const left=document.getElementById('deskLeft').value,right=document.getElementById('deskRight').value;if(left&&right&&left===right){Swal.showValidationMessage('Không thể chọn cùng một học sinh cho cả 2 vị trí');return false}cfg.assignments[idx]={left,right};if(!left&&!right)delete cfg.assignments[idx];saveState();renderPage();return true}})}
 async function exportSeatingPNG(){const el=document.getElementById('seatingExport');const c=await html2canvas(el,{scale:2,backgroundColor:'#ffffff'});const a=document.createElement('a');a.download=`so-do-lop-${activeClass().name}.png`;a.href=c.toDataURL('image/png');a.click();toast('Đã xuất ảnh sơ đồ')}
-function timeSlots(){return TIMETABLE_SLOT_META.map(slot=>({id:slot.id,label:slot.label,time:timetableSlotTime(slot.id),editable:slot.editable}))}
-function renderTimetable(){const slots=timeSlots();return `<div class="section-head"><div><h2><i class="fa-solid fa-calendar-days text-primary me-2"></i>Thời Khóa Biểu ${esc(activeClass().name)}</h2><p>Khung giờ ra vào lớp được cập nhật theo ảnh mẫu của khối 8 THCS Quang Trung. Bấm ô trống để thêm tiết; hàng "Ra chơi" chỉ hiển thị thời gian nghỉ.</p></div><button class="btn btn-outline-primary" onclick="openTimetableConfig()"><i class="fa-solid fa-sliders me-1"></i>Cấu hình khung giờ</button></div><div class="timetable"><div class="alert alert-info mb-3"><strong>Khung giờ hiện hành:</strong> SHL đầu giờ 12g15–12g30 · Tiết 1 12g30–13g15 · Tiết 2 13g20–14g05 · Tiết 3 14g10–14g55 · Ra chơi 14g55–15g20 · Tiết 4 15g20–16g05 · Tiết 5 16g10–16g55.</div><div class="timetable-grid"><div class="tt-head">TIẾT</div>${DAYS.map(d=>`<div class="tt-head">${d}</div>`).join('')}${slots.map(slot=>`<div class="tt-cell tt-time ${slot.editable?'':'bg-light'}"><strong>${slot.label}</strong><small>${slot.time}</small></div>${DAYS.map((d,di)=>{if(!slot.editable)return `<div class="tt-cell bg-light"><div class="lesson"><strong>Ra chơi</strong><div>${esc(slot.time)}</div></div></div>`;const e=state.timetable.entries.find(x=>x.classId===state.activeClassId&&x.day===di&&x.slot===slot.id);return `<div class="tt-cell" onclick="openLessonModal(${di},'${slot.id}','${e?.id||''}')">${e?`<div class="lesson"><strong>${esc(e.subject)}</strong><div>${esc(e.time||slot.time)}</div></div>`:'<div class="text-muted text-center mt-3"><i class="fa-solid fa-plus"></i> Thêm tiết</div>'}</div>`}).join('')}`).join('')}</div></div>`}
-function openTimetableConfig(){showModal('Cấu hình khung giờ ra vào lớp',`<form onsubmit="saveTimetableConfig(event)"><div class="card p-3"><div class="alert alert-warning mb-3">Có thể chỉnh từng mốc thời gian theo thực tế của trường. Các ô này đồng thời cập nhật trên trang chủ và thời khóa biểu.</div><div class="row g-3">${TIMETABLE_SLOT_META.map(slot=>`<div class="col-md-6"><label class="form-label fw-bold">${slot.label}</label><input id="slot_${slot.id}" class="form-control" value="${esc(timetableSlotTime(slot.id))}" ${slot.id==='BREAK'?'':'required'}></div>`).join('')}</div></div><div class="text-end mt-3"><button class="btn btn-primary">Lưu khung giờ</button></div></form>`)}
-function saveTimetableConfig(e){e.preventDefault();state.timetable.slotTimes=state.timetable.slotTimes||Object.assign({},TIMETABLE_SLOT_DEFAULTS);TIMETABLE_SLOT_META.forEach(slot=>{const el=document.getElementById('slot_'+slot.id);if(el)state.timetable.slotTimes[slot.id]=el.value.trim()||TIMETABLE_SLOT_DEFAULTS[slot.id]});state.timetable.morning=false;state.timetable.afternoon=true;state.timetable.morningCount=0;state.timetable.afternoonCount=5;state.timetable.entries.forEach(x=>{if(TIMETABLE_SLOT_META.some(s=>s.id===x.slot))x.time=state.timetable.slotTimes[x.slot]||x.time});saveState();mainModal.hide();renderPage()}
-function openLessonModal(day,slot,id=''){const sl=timeSlots().find(x=>x.id===slot);if(!sl||!sl.editable)return;const e=state.timetable.entries.find(x=>x.id===id)||{subject:'',time:sl?.time||''};showModal(id?'Sửa tiết học':'Thêm tiết học',`<form onsubmit="saveLesson(event,${day},'${slot}','${id}')"><div class="mb-3"><label class="form-label fw-bold">Chọn nhanh môn học phổ biến</label><div>${state.subjects.map(x=>`<button type="button" class="subject-chip" onclick="document.getElementById('lessonSubject').value='${esc(x)}'">${esc(x)}</button>`).join('')}</div></div><div class="mb-3"><label class="form-label fw-bold">Tên môn học / Hoạt động *</label><input id="lessonSubject" class="form-control" required value="${esc(e.subject)}"></div><div class="row g-3"><div class="col-md-6"><label class="form-label fw-bold">Giáo viên giảng dạy</label><input class="form-control" value="${esc(state.teacher.name)}" disabled></div><div class="col-md-6"><label class="form-label fw-bold">Khung giờ tiết học</label><input id="lessonTime" class="form-control" value="${esc(e.time||sl.time)}"></div></div><div class="small text-muted mt-2">Mốc giờ mặc định của ${esc(sl.label)} là ${esc(sl.time)}.</div><div class="d-flex justify-content-between mt-4">${id?`<button type="button" class="btn btn-outline-danger" onclick="deleteLesson('${id}')">Xóa tiết</button>`:'<span></span>'}<button class="btn btn-primary">Lưu tiết học</button></div></form>`)}
-function saveLesson(e,day,slot,id){e.preventDefault();const d={subject:document.getElementById('lessonSubject').value.trim(),time:document.getElementById('lessonTime').value.trim()||timetableSlotTime(slot)};if(id)Object.assign(state.timetable.entries.find(x=>x.id===id),d);else state.timetable.entries.push({id:uid('tt'),classId:state.activeClassId,day,slot,...d});saveState();mainModal.hide();renderPage()}
-function deleteLesson(id){state.timetable.entries=state.timetable.entries.filter(x=>x.id!==id);saveState();mainModal.hide();renderPage()}
+function setTimetableViewSession(sess){
+  state.timetable.viewSession = sess;
+  saveState(false);
+  renderPage();
+}
+
+function renderTimetable(){
+  const classSess = getClassSession();
+  const viewSess = state.timetable.viewSession || classSess;
+  const slots = timeSlots(viewSess);
+  const isMorning = viewSess === 'morning';
+  const banner = isMorning ? `
+    <div class="alert alert-warning mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div>
+        <strong><i class="fa-solid fa-sun me-1"></i>KHUNG GIỜ BUỔI SÁNG (Khối 7, Khối 9) - Chuẩn THCS Quang Trung:</strong>
+        <div class="small mt-1">Truy bài: <b>6:45 - 7:00</b> · Tiết 1: <b>7:00 - 7:45</b> · Tiết 2: <b>7:50 - 8:35</b> · Tiết 3: <b>8:40 - 9:25</b> · Ra chơi: <b>9:25 - 9:50</b> · Tiết 4: <b>9:50 - 10:35</b> · Tiết 5: <b>10:40 - 11:25</b></div>
+      </div>
+      <div>
+        ${classSess === 'morning' ? '<span class="badge bg-success">Đúng ca lớp '+esc(activeClass().name)+'</span>' : '<span class="badge bg-secondary">Lớp '+esc(activeClass().name)+' mặc định ca Chiều</span>'}
+      </div>
+    </div>
+  ` : `
+    <div class="alert alert-info mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div>
+        <strong><i class="fa-solid fa-cloud-sun me-1"></i>KHUNG GIỜ BUỔI CHIỀU (Khối 6, Khối 8) - Chuẩn THCS Quang Trung:</strong>
+        <div class="small mt-1">Truy bài: <b>12:15 - 12:30</b> · Tiết 1: <b>12:30 - 13:15</b> · Tiết 2: <b>13:20 - 14:05</b> · Tiết 3: <b>14:10 - 14:55</b> · Ra chơi: <b>14:55 - 15:20</b> · Tiết 4: <b>15:20 - 16:05</b> · Tiết 5: <b>16:10 - 16:55</b></div>
+      </div>
+      <div>
+        ${classSess === 'afternoon' ? '<span class="badge bg-success">Đúng ca lớp '+esc(activeClass().name)+'</span>' : '<span class="badge bg-secondary">Lớp '+esc(activeClass().name)+' mặc định ca Sáng</span>'}
+      </div>
+    </div>
+  `;
+
+  return `
+    <div class="section-head">
+      <div>
+        <h2><i class="fa-solid fa-calendar-days text-primary me-2"></i>Thời Khóa Biểu ${esc(activeClass().name)}</h2>
+        <p>Chuẩn khung giờ THCS Quang Trung (2025 - 2026): K7, 9 học Buổi Sáng; K6, 8 học Buổi Chiều.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <div class="btn-group" role="group">
+          <button class="btn ${isMorning?'btn-primary':'btn-outline-primary'}" onclick="setTimetableViewSession('morning')">
+            <i class="fa-solid fa-sun me-1"></i>☀️ Buổi Sáng (K7, 9)
+          </button>
+          <button class="btn ${!isMorning?'btn-primary':'btn-outline-primary'}" onclick="setTimetableViewSession('afternoon')">
+            <i class="fa-solid fa-cloud-sun me-1"></i>🌤️ Buổi Chiều (K6, 8)
+          </button>
+        </div>
+        <button class="btn btn-outline-secondary" onclick="openTimetableConfig()"><i class="fa-solid fa-sliders me-1"></i>Cấu hình khung giờ</button>
+      </div>
+    </div>
+    <div class="timetable">
+      ${banner}
+      <div class="timetable-grid">
+        <div class="tt-head">TIẾT</div>
+        ${DAYS.map(d=>`<div class="tt-head">${d}</div>`).join('')}
+        ${slots.map(slot=>`
+          <div class="tt-cell tt-time ${slot.editable?'':'bg-light'}">
+            <strong>${slot.label}</strong>
+            <small>${slot.time}</small>
+          </div>
+          ${DAYS.map((d,di)=>{
+            if(!slot.editable) return `<div class="tt-cell bg-light"><div class="lesson"><strong>Ra chơi</strong><div>${esc(slot.time)}</div></div></div>`;
+            const e=state.timetable.entries.find(x=>x.classId===state.activeClassId&&x.day===di&&x.slot===slot.id);
+            const displayTime = timetableSlotTime(slot.id, viewSess) || e?.time || slot.time;
+            return `<div class="tt-cell" onclick="openLessonModal(${di},'${slot.id}','${e?.id||''}')">${e?`<div class="lesson"><strong>${esc(e.subject)}</strong><div>${esc(displayTime)}</div></div>`:'<div class="text-muted text-center mt-3"><i class="fa-solid fa-plus"></i> Thêm tiết</div>'}</div>`;
+          }).join('')}
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function openTimetableConfig(){
+  state.timetable.slotTimesMorning = state.timetable.slotTimesMorning || Object.assign({}, TIMETABLE_SLOT_MORNING);
+  state.timetable.slotTimesAfternoon = state.timetable.slotTimesAfternoon || Object.assign({}, TIMETABLE_SLOT_AFTERNOON);
+  const curSess = state.timetable.viewSession || getClassSession();
+
+  showModal('Cấu hình khung giờ ra vào lớp (Sáng / Chiều)', `
+    <form onsubmit="saveTimetableConfig(event)">
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Quy định chuẩn <b>THCS Quang Trung (2025 - 2026)</b>: Khối 7, 9 học <b>Buổi Sáng</b>; Khối 6, 8 học <b>Buổi Chiều</b>. Bạn có thể tùy chỉnh hoặc bấm đặt lại chuẩn bất cứ lúc nào.
+      </div>
+
+      <ul class="nav nav-pills nav-fill mb-3" role="tablist">
+        <li class="nav-item">
+          <button class="nav-link ${curSess==='morning'?'active':''}" id="tab-morning-btn" data-bs-toggle="pill" data-bs-target="#tab-morning-pane" type="button" role="tab">
+            <i class="fa-solid fa-sun me-1"></i>☀️ Buổi Sáng (Khối 7, 9)
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link ${curSess==='afternoon'?'active':''}" id="tab-afternoon-btn" data-bs-toggle="pill" data-bs-target="#tab-afternoon-pane" type="button" role="tab">
+            <i class="fa-solid fa-cloud-sun me-1"></i>🌤️ Buổi Chiều (Khối 6, 8)
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content border rounded p-3 bg-light">
+        <div class="tab-pane fade ${curSess==='morning'?'show active':''}" id="tab-morning-pane" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold text-warning-emphasis"><i class="fa-solid fa-sun me-1"></i>Khung giờ Buổi Sáng</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetSessionSlots('morning')"><i class="fa-solid fa-rotate-left me-1"></i>Đặt lại chuẩn Sáng</button>
+          </div>
+          <div class="row g-2">
+            ${TIMETABLE_SLOT_META.map(slot=>`
+              <div class="col-md-6">
+                <label class="form-label small fw-bold mb-1">${slot.label} ${slot.id==='BREAK'?'(Nghỉ giữa giờ)':''}</label>
+                <input id="slot_m_${slot.id}" class="form-control form-control-sm" value="${esc(state.timetable.slotTimesMorning[slot.id] || TIMETABLE_SLOT_MORNING[slot.id])}" required>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="tab-pane fade ${curSess==='afternoon'?'show active':''}" id="tab-afternoon-pane" role="tabpanel">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold text-info-emphasis"><i class="fa-solid fa-cloud-sun me-1"></i>Khung giờ Buổi Chiều</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetSessionSlots('afternoon')"><i class="fa-solid fa-rotate-left me-1"></i>Đặt lại chuẩn Chiều</button>
+          </div>
+          <div class="row g-2">
+            ${TIMETABLE_SLOT_META.map(slot=>`
+              <div class="col-md-6">
+                <label class="form-label small fw-bold mb-1">${slot.label} ${slot.id==='BREAK'?'(Nghỉ giữa giờ)':''}</label>
+                <input id="slot_a_${slot.id}" class="form-control form-control-sm" value="${esc(state.timetable.slotTimesAfternoon[slot.id] || TIMETABLE_SLOT_AFTERNOON[slot.id])}" required>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="resetAllSlotsToDefaultOfficial()">
+          <i class="fa-solid fa-arrow-rotate-left me-1"></i>Khôi phục toàn bộ chuẩn trường
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk me-1"></i>Lưu khung giờ
+        </button>
+      </div>
+    </form>
+  `);
+}
+
+function resetSessionSlots(session){
+  if(session === 'morning'){
+    TIMETABLE_SLOT_META.forEach(slot => {
+      const el = document.getElementById('slot_m_' + slot.id);
+      if(el) el.value = TIMETABLE_SLOT_MORNING[slot.id];
+    });
+    toast('Đã nạp chuẩn Buổi Sáng THCS Quang Trung');
+  } else {
+    TIMETABLE_SLOT_META.forEach(slot => {
+      const el = document.getElementById('slot_a_' + slot.id);
+      if(el) el.value = TIMETABLE_SLOT_AFTERNOON[slot.id];
+    });
+    toast('Đã nạp chuẩn Buổi Chiều THCS Quang Trung');
+  }
+}
+
+function resetAllSlotsToDefaultOfficial(){
+  resetSessionSlots('morning');
+  resetSessionSlots('afternoon');
+  toast('Đã khôi phục toàn bộ chuẩn khung giờ Sáng & Chiều');
+}
+
+function saveTimetableConfig(e){
+  e.preventDefault();
+  state.timetable.slotTimesMorning = state.timetable.slotTimesMorning || {};
+  state.timetable.slotTimesAfternoon = state.timetable.slotTimesAfternoon || {};
+  TIMETABLE_SLOT_META.forEach(slot => {
+    const elM = document.getElementById('slot_m_' + slot.id);
+    if(elM) state.timetable.slotTimesMorning[slot.id] = elM.value.trim() || TIMETABLE_SLOT_MORNING[slot.id];
+    const elA = document.getElementById('slot_a_' + slot.id);
+    if(elA) state.timetable.slotTimesAfternoon[slot.id] = elA.value.trim() || TIMETABLE_SLOT_AFTERNOON[slot.id];
+  });
+  state.timetable.slotTimes = Object.assign({}, state.timetable.slotTimesAfternoon);
+  const curSess = state.timetable.viewSession || getClassSession();
+  const curSlotMap = curSess === 'morning' ? state.timetable.slotTimesMorning : state.timetable.slotTimesAfternoon;
+  state.timetable.entries.forEach(x => {
+    if(TIMETABLE_SLOT_META.some(s => s.id === x.slot)){
+      x.time = curSlotMap[x.slot] || x.time;
+    }
+  });
+  saveState();
+  mainModal.hide();
+  renderPage();
+  toast('Đã lưu cấu hình khung giờ');
+}
+
+function openLessonModal(day,slot,id=''){
+  const sess = state.timetable.viewSession || getClassSession();
+  const sl = timeSlots(sess).find(x=>x.id===slot);
+  if(!sl||!sl.editable)return;
+  const e=state.timetable.entries.find(x=>x.id===id)||{subject:'',time:sl?.time||''};
+  showModal(id?'Sửa tiết học':'Thêm tiết học',`
+    <form onsubmit="saveLesson(event,${day},'${slot}','${id}')">
+      <div class="mb-3">
+        <label class="form-label fw-bold">Chọn nhanh môn học phổ biến</label>
+        <div>${state.subjects.map(x=>`<button type="button" class="subject-chip" onclick="document.getElementById('lessonSubject').value='${esc(x)}'">${esc(x)}</button>`).join('')}</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Tên môn học / Hoạt động *</label>
+        <input id="lessonSubject" class="form-control" required value="${esc(e.subject)}">
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Giáo viên giảng dạy</label>
+          <input class="form-control" value="${esc(state.teacher.name)}" disabled>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Khung giờ tiết học (${sess==='morning'?'Sáng':'Chiều'})</label>
+          <input id="lessonTime" class="form-control" value="${esc(e.time||sl.time)}">
+        </div>
+      </div>
+      <div class="small text-muted mt-2">Mốc giờ chuẩn ${sess==='morning'?'Sáng':'Chiều'} của ${esc(sl.label)} là <b>${esc(sl.time)}</b>.</div>
+      <div class="d-flex justify-content-between mt-4">
+        ${id?`<button type="button" class="btn btn-outline-danger" onclick="deleteLesson('${id}')">Xóa tiết</button>`:'<span></span>'}
+        <button class="btn btn-primary">Lưu tiết học</button>
+      </div>
+    </form>
+  `);
+}
+
+function saveLesson(e,day,slot,id){
+  e.preventDefault();
+  const sess = state.timetable.viewSession || getClassSession();
+  const d={
+    subject: document.getElementById('lessonSubject').value.trim(),
+    time: document.getElementById('lessonTime').value.trim() || timetableSlotTime(slot, sess)
+  };
+  if(id) Object.assign(state.timetable.entries.find(x=>x.id===id), d);
+  else state.timetable.entries.push({id:uid('tt'),classId:state.activeClassId,day,slot,...d});
+  saveState();
+  mainModal.hide();
+  renderPage();
+}
+
+function deleteLesson(id){
+  state.timetable.entries = state.timetable.entries.filter(x=>x.id!==id);
+  saveState();
+  mainModal.hide();
+  renderPage();
+}
 function renderRewards(){return `<div class="section-head"><div><h2><i class="fa-solid fa-gift text-primary me-2"></i>Cửa hàng đổi quà</h2><p>Học sinh dùng xu tích lũy để đổi phần thưởng.</p></div><button class="btn btn-primary" onclick="openRewardModal()"><i class="fa-solid fa-plus me-1"></i>Thêm phần thưởng</button></div><div class="reward-grid">${state.rewards.map(r=>`<div class="card reward-card hover-lift"><div class="reward-visual">${esc(r.emoji||'🎁')}</div><div class="reward-body"><div class="d-flex justify-content-between"><h5 class="fw-bold">${esc(r.name)}</h5><span class="coin-pill">${r.cost} xu</span></div><div class="text-muted small">${r.stock>0?'Còn '+r.stock+' phần':'Hết quà'}</div><div class="d-flex gap-2 mt-3"><button class="btn btn-primary flex-fill" ${r.stock<=0?'disabled':''} onclick="redeemReward('${r.id}')">${r.stock>0?'Đổi phần thưởng':'Đã hết'}</button><button class="icon-btn" onclick="openRewardModal('${r.id}')"><i class="fa-solid fa-pen"></i></button><button class="icon-btn text-danger" onclick="deleteReward('${r.id}')"><i class="fa-solid fa-trash"></i></button></div></div></div>`).join('')}</div><div class="card p-3 mt-3"><h5 class="fw-bold">Lịch sử đổi quà</h5>${state.redemptions.filter(x=>x.classId===state.activeClassId).slice(0,20).map(x=>`<div class="history-item"><span><strong>${esc(x.studentName)}</strong> đổi ${esc(x.rewardName)}</span><span class="text-muted">-${x.cost} xu · ${new Date(x.time).toLocaleString('vi-VN')}</span></div>`).join('')||'<div class="empty">Chưa có lượt đổi quà</div>'}</div>`}
 function openRewardModal(id=''){const r=state.rewards.find(x=>x.id===id)||{name:'',cost:10,emoji:'🎁',stock:10};showModal(id?'Sửa phần thưởng':'Thêm phần thưởng',`<form onsubmit="saveReward(event,'${id}')"><div class="row g-3"><div class="col-md-6"><label class="form-label fw-bold">Tên quà</label><input id="rName" class="form-control" required value="${esc(r.name)}"></div><div class="col-md-2"><label class="form-label fw-bold">Emoji</label><input id="rEmoji" class="form-control" value="${esc(r.emoji)}"></div><div class="col-md-2"><label class="form-label fw-bold">Giá xu</label><input id="rCost" type="number" min="1" class="form-control" value="${r.cost}"></div><div class="col-md-2"><label class="form-label fw-bold">Tồn</label><input id="rStock" type="number" min="0" class="form-control" value="${r.stock}"></div></div><div class="text-end mt-4"><button class="btn btn-primary">Lưu phần thưởng</button></div></form>`)}
 function saveReward(e,id){e.preventDefault();const d={name:document.getElementById('rName').value.trim(),emoji:document.getElementById('rEmoji').value||'🎁',cost:+document.getElementById('rCost').value||1,stock:+document.getElementById('rStock').value||0};if(id)Object.assign(state.rewards.find(x=>x.id===id),d);else state.rewards.push({id:uid('r'),...d});saveState();mainModal.hide();renderPage()}
