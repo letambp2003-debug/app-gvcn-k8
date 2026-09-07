@@ -51,7 +51,7 @@
 ---
 
 ## BƯỚC 5: KẾT NỐI VÀO WEBAPP
-1. Mở file `Index.html` trên trình duyệt.
+1. Mở file `index.html` trên trình duyệt.
 2. Đăng nhập với tài khoản `admin` (Mật khẩu: `admin123`) hoặc tài khoản giáo viên.
 3. Vào menu **Cài đặt (Settings)** $\to$ Dán link Web App URL vừa copy vào ô **"URL Google Apps Script API"** và bấm **Lưu kết nối**.
 4. Toàn bộ dữ liệu của trường học từ nay sẽ được đồng bộ và lưu trữ vĩnh viễn, an toàn trên Google Sheets!

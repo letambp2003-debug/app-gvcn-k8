@@ -52,7 +52,7 @@ Hệ thống sử dụng **Google Sheets** làm cơ sở dữ liệu đám mây 
 
 ```
 CHATBOT-GVCN/
-├── Index.html                       # Ứng dụng Webapp hoàn chỉnh (HTML5, CSS3, JS ES6)
+├── index.html                       # Ứng dụng Webapp hoàn chỉnh (HTML5, CSS3, JS ES6)
 ├── google_apps_script.js            # Mã nguồn API Backend chạy trên Google Apps Script
 ├── huong_dan_cai_dat_google_sheets.md # Cẩm nang 5 bước cài đặt chi tiết cho Quản trị viên
 ├── .gitignore                       # File cấu hình bỏ qua tệp tạm khi đẩy lên Git
@@ -75,7 +75,7 @@ CHATBOT-GVCN/
    - Copy đường link **Web app URL** (dạng `https://script.google.com/macros/s/.../exec`).
 
 ### Bước 2: Sử dụng Webapp
-1. Mở file `Index.html` bằng trình duyệt web.
+1. Mở file `index.html` bằng trình duyệt web.
 2. Ứng dụng đã được tích hợp sẵn URL Web App hoặc bạn có thể dán link mới vào mục **Cài đặt $\to$ Đường dẫn Google Apps Script Web App URL** và bấm **Lưu**.
 3. Đăng nhập tài khoản mẫu:
    - **Admin**: `admin` / `admin123` (Toàn quyền quản lý tất cả các lớp).
