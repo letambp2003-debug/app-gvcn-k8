@@ -331,11 +331,21 @@ const TIMETABLE_SLOT_META=[
   {id:'T5',label:'Tiết 5',shortLabel:'Tiết 5',editable:true}
 ];
 const NAV=[
-  ['home','fa-house','Trang chủ',''],['classes','fa-school','Lớp học',''],['students','fa-graduation-cap','Học sinh','count'],['attendance','fa-clipboard-check','Điểm danh',''],['competition','fa-trophy','Thi đua tuần','HOT'],['seating','fa-border-all','Sơ đồ lớp',''],['timetable','fa-calendar-days','Thời khóa biểu',''],['rewards','fa-gift','Đổi quà','HOT'],['wheel','fa-wand-magic-sparkles','Vòng quay','HOT'],['film','fa-film','Cuộn phim','NEW'],['noise','fa-shield-halved','Chống ồn',''],['countdown','fa-stopwatch','Đếm ngược',''],['links','fa-link','Liên kết',''],['stats','fa-chart-column','Thống kê',''],['data','fa-database','Dữ liệu',''],['settings','fa-gear','Cài đặt','']
+  ['home','fa-house','Trang chủ',''],['classes','fa-school','Lớp học',''],['accounts','fa-user-shield','Quản trị GVCN','ADMIN'],['students','fa-graduation-cap','Học sinh','count'],['attendance','fa-clipboard-check','Điểm danh',''],['competition','fa-trophy','Thi đua tuần','HOT'],['seating','fa-border-all','Sơ đồ lớp',''],['timetable','fa-calendar-days','Thời khóa biểu',''],['rewards','fa-gift','Đổi quà','HOT'],['wheel','fa-wand-magic-sparkles','Vòng quay','HOT'],['film','fa-film','Cuộn phim','NEW'],['noise','fa-shield-halved','Chống ồn',''],['countdown','fa-stopwatch','Đếm ngược',''],['links','fa-link','Liên kết',''],['stats','fa-chart-column','Thống kê',''],['data','fa-database','Dữ liệu',''],['settings','fa-gear','Cài đặt','']
 ];
 const PAGE_META={
- home:['Trang chủ','Tổng quan nhanh tình hình lớp học hôm nay'],classes:['Quản lý Lớp học','Danh sách các lớp, khối lớp và thông tin chung'],students:['Danh sách học sinh','Quản lý thành viên, nề nếp và thưởng xu thi đua'],attendance:['Điểm danh','Theo dõi sĩ số, chuyên cần và tự động tính điểm thi đua'],competition:['Thi đua tuần 8A6','100 điểm/tuần · nề nếp · chuyên cần · xếp hạng cá nhân và tổ'],seating:['Sơ đồ Lớp học','Bố trí vị trí chỗ ngồi trực quan và linh hoạt'],timetable:['Thời khóa biểu','Thiết lập lịch dạy Sáng/Chiều và các môn học trong tuần'],rewards:['Đổi quà','Tạo phần thưởng và đổi quà bằng xu thi đua'],wheel:['Vòng quay may mắn','Quay ngẫu nhiên gọi tên học sinh hoặc nhận thưởng'],film:['Cuộn Phim May Mắn','Chọn ngẫu nhiên học sinh bằng hiệu ứng cuộn phim'],noise:['Công Cụ Chống Ồn','Cảnh báo lớp học, đếm ngược im lặng và đo microphone'],countdown:['Đồng Hồ Đếm Ngược','Thiết lập thời gian, mẫu nhanh và chuông báo'],links:['Liên kết hữu ích','Lưu học liệu, trang web và đường dẫn dùng chung'],stats:['Báo cáo & Thống kê','Biểu đồ phân tích thi đua, nề nếp và xu thưởng'],data:['Quản lý dữ liệu','Sao lưu, khôi phục và làm sạch dữ liệu ứng dụng'],settings:['Cài đặt hệ thống','Thiết lập hồ sơ giáo viên và cấu hình lớp học']
+ home:['Trang chủ','Tổng quan nhanh tình hình lớp học hôm nay'],classes:['Quản lý Lớp học','Danh sách các lớp, khối lớp và thông tin chung'],accounts:['Quản Trị Phân Công & Tài Khoản GVCN','Chỉ định giáo viên chủ nhiệm, quản lý tài khoản và cấp mật khẩu toàn trường'],students:['Danh sách học sinh','Quản lý thành viên, nề nếp và thưởng xu thi đua'],attendance:['Điểm danh','Theo dõi sĩ số, chuyên cần và tự động tính điểm thi đua'],competition:['Thi đua tuần 8A6','100 điểm/tuần · nề nếp · chuyên cần · xếp hạng cá nhân và tổ'],seating:['Sơ đồ Lớp học','Bố trí vị trí chỗ ngồi trực quan và linh hoạt'],timetable:['Thời khóa biểu','Thiết lập lịch dạy Sáng/Chiều và các môn học trong tuần'],rewards:['Đổi quà','Tạo phần thưởng và đổi quà bằng xu thi đua'],wheel:['Vòng quay may mắn','Quay ngẫu nhiên gọi tên học sinh hoặc nhận thưởng'],film:['Cuộn Phim May Mắn','Chọn ngẫu nhiên học sinh bằng hiệu ứng cuộn phim'],noise:['Công Cụ Chống Ồn','Cảnh báo lớp học, đếm ngược im lặng và đo microphone'],countdown:['Đồng Hồ Đếm Ngược','Thiết lập thời gian, mẫu nhanh và chuông báo'],links:['Liên kết hữu ích','Lưu học liệu, trang web và đường dẫn dùng chung'],stats:['Báo cáo & Thống kê','Biểu đồ phân tích thi đua, nề nếp và xu thưởng'],data:['Quản lý dữ liệu','Sao lưu, khôi phục và làm sạch dữ liệu ứng dụng'],settings:['Cài đặt hệ thống','Thiết lập hồ sơ giáo viên và cấu hình lớp học']
 };
+const DEFAULT_ACCOUNTS = [
+  { username: 'admin', password: 'admin123', fullname: 'Ban Giám Hiệu', role: 'admin', assignedClass: '*', assignedGroup: '*' },
+  { username: 'gv_8a6', password: '123456', fullname: 'Lê Tâm (GVCN 8A6)', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*' },
+  { username: 'gv_8a1', password: '123456', fullname: 'Nguyễn Văn A (GVCN 8A1)', role: 'teacher', assignedClass: 'class_8a1', assignedGroup: '*' },
+  // Tài khoản Tổ Trưởng mẫu cục bộ (PIN mặc định: 1234)
+  { username: 'totruong_8a6_t1', pin: '1234', fullname: 'Tổ Trưởng Tổ 1 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 1' },
+  { username: 'totruong_8a6_t2', pin: '1234', fullname: 'Tổ Trưởng Tổ 2 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 2' },
+  { username: 'totruong_8a6_t3', pin: '1234', fullname: 'Tổ Trưởng Tổ 3 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 3' },
+  { username: 'totruong_8a6_t4', pin: '1234', fullname: 'Tổ Trưởng Tổ 4 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 4' }
+];
 function uid(p='id'){return p+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
 function today(){const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())}
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
@@ -428,9 +438,10 @@ function normalizeState(raw){
  const redemptions=Array.isArray(x.redemptions)?x.redemptions.filter(r=>classIds.has(String(r?.classId||''))&&studentIds.has(String(r?.studentId||''))).map(r=>({id:safeId(r.id,'rd'),classId:String(r.classId),studentId:String(r.studentId),studentName:String(r.studentName||'').slice(0,120),rewardName:String(r.rewardName||'').slice(0,100),cost:Math.max(0,finiteNum(r.cost,0)),time:isNaN(Date.parse(r.time))?new Date().toISOString():new Date(r.time).toISOString()})):[];
  const links=Array.isArray(x.links)?x.links.map(l=>({id:safeId(l.id,'l'),name:String(l.name||'Liên kết').slice(0,120),url:String(l.url||'https://').slice(0,2000),category:String(l.category||'Khác').slice(0,80),desc:String(l.desc||'').slice(0,500),pinned:!!l.pinned})):[];
  const teacher={name:String(x.teacher?.name||d.teacher.name).slice(0,120),role:String(x.teacher?.role||d.teacher.role).slice(0,80),subject:String(x.teacher?.subject||d.teacher.subject).slice(0,100),school:String(x.teacher?.school||d.teacher.school).slice(0,160),avatar:safeAvatar(x.teacher?.avatar)};
- const settings={...d.settings,...(x.settings&&typeof x.settings==='object'?x.settings:{}),gasApiUrl:String(x.settings?.gasApiUrl||localStorage.getItem('gas_api_url')||DEFAULT_GAS_API_URL).trim(),wheelExclude:x.settings?.wheelExclude!==false,filmExclude:x.settings?.filmExclude!==false,tickLast10:!!x.settings?.tickLast10,timerColor:/^#[0-9a-f]{6}$/i.test(x.settings?.timerColor||'')?x.settings.timerColor:'#0d9488',wheelEffectMode:x.settings?.wheelEffectMode==='fixed'?'fixed':'random'};
- const active=classIds.has(String(x.activeClassId||''))?String(x.activeClassId):classes[0].id;
- return {version:APP_SCHEMA_VERSION,rosterVersion:String(x.rosterVersion||'').slice(0,80),activeClassId:active,currentPage:PAGE_META[x.currentPage]?x.currentPage:'home',teacher,classes,students,attendance,attendanceDate:/^\d{4}-\d{2}-\d{2}$/.test(x.attendanceDate||'')?x.attendanceDate:today(),seating,timetable:{morning:true,afternoon:true,morningCount:5,afternoonCount:5,slotTimes,slotTimesMorning,slotTimesAfternoon,viewSession:['morning','afternoon'].includes(x.timetable?.viewSession)?x.timetable.viewSession:'',entries},rewards,redemptions,transactions,wheelHistory:historyFilter(x.wheelHistory),filmHistory:historyFilter(x.filmHistory),links,subjects,settings,wheelExcluded:Array.isArray(x.wheelExcluded)?x.wheelExcluded.filter(id=>studentIds.has(id)):[],filmExcluded:Array.isArray(x.filmExcluded)?x.filmExcluded.filter(id=>studentIds.has(id)):[],wheelGroup:['all','favorite','manual'].includes(x.wheelGroup)?x.wheelGroup:'all',wheelEffect:['Xoáy tròn','Tung nảy','Hút vào tâm','Bay theo quỹ đạo','Mưa bóng','Sân khấu ánh sáng','Sóng bồng bềnh'].includes(x.wheelEffect)?x.wheelEffect:'Xoáy tròn',wheelSelected:Array.isArray(x.wheelSelected)?x.wheelSelected.filter(id=>studentIds.has(id)):[],competition:normalizeCompetition(x.competition,classes,students)};
+  const settings={...d.settings,...(x.settings&&typeof x.settings==='object'?x.settings:{}),gasApiUrl:String(x.settings?.gasApiUrl||localStorage.getItem('gas_api_url')||DEFAULT_GAS_API_URL).trim(),wheelExclude:x.settings?.wheelExclude!==false,filmExclude:x.settings?.filmExclude!==false,tickLast10:!!x.settings?.tickLast10,timerColor:/^#[0-9a-f]{6}$/i.test(x.settings?.timerColor||'')?x.settings.timerColor:'#0d9488',wheelEffectMode:x.settings?.wheelEffectMode==='fixed'?'fixed':'random'};
+  const active=classIds.has(String(x.activeClassId||''))?String(x.activeClassId):classes[0].id;
+  const accounts=Array.isArray(x.accounts)&&x.accounts.length?x.accounts.map(a=>({id:safeId(a?.id,'acc'),username:String(a?.username||'').trim().toLowerCase(),password:String(a?.password||a?.pin||'123456').trim(),fullname:String(a?.fullname||a?.username||'').slice(0,120),role:['admin','teacher','group_leader'].includes(a?.role)?a.role:'teacher',assignedClass:String(a?.assignedClass||'*').slice(0,80),assignedGroup:String(a?.assignedGroup||'*').slice(0,80),status:a?.status==='locked'?'locked':'active',phone:String(a?.phone||'').slice(0,30),updatedAt:isNaN(Date.parse(a?.updatedAt))?new Date().toISOString():new Date(a.updatedAt).toISOString()})).filter(a=>a.username):DEFAULT_ACCOUNTS.map(a=>({id:safeId('acc_'+a.username,'acc'),username:a.username,password:a.password||a.pin||'123456',fullname:a.fullname,role:a.role,assignedClass:a.assignedClass,assignedGroup:a.assignedGroup,status:'active',phone:'',updatedAt:new Date().toISOString()}));
+  return {version:APP_SCHEMA_VERSION,rosterVersion:String(x.rosterVersion||'').slice(0,80),activeClassId:active,currentPage:PAGE_META[x.currentPage]?x.currentPage:'home',teacher,classes,students,attendance,attendanceDate:/^\d{4}-\d{2}-\d{2}$/.test(x.attendanceDate||'')?x.attendanceDate:today(),seating,timetable:{morning:true,afternoon:true,morningCount:5,afternoonCount:5,slotTimes,slotTimesMorning,slotTimesAfternoon,viewSession:['morning','afternoon'].includes(x.timetable?.viewSession)?x.timetable.viewSession:'',entries},rewards,redemptions,transactions,wheelHistory:historyFilter(x.wheelHistory),filmHistory:historyFilter(x.filmHistory),links,subjects,settings,wheelExcluded:Array.isArray(x.wheelExcluded)?x.wheelExcluded.filter(id=>studentIds.has(id)):[],filmExcluded:Array.isArray(x.filmExcluded)?x.filmExcluded.filter(id=>studentIds.has(id)):[],wheelGroup:['all','favorite','manual'].includes(x.wheelGroup)?x.wheelGroup:'all',wheelEffect:['Xoáy tròn','Tung nảy','Hút vào tâm','Bay theo quỹ đạo','Mưa bóng','Sân khấu ánh sáng','Sóng bồng bềnh'].includes(x.wheelEffect)?x.wheelEffect:'Xoáy tròn',wheelSelected:Array.isArray(x.wheelSelected)?x.wheelSelected.filter(id=>studentIds.has(id)):[],competition:normalizeCompetition(x.competition,classes,students),accounts};
 }
 
 function defaultState(){
@@ -476,6 +487,7 @@ function defaultState(){
   redemptions:[],transactions:[],wheelHistory:[],filmHistory:[],links:[{id:'l1',name:'Học liệu lớp học',url:'https://',category:'Học liệu & SGK',desc:'Liên kết mẫu - hãy chỉnh sửa',pinned:true}],
   subjects:SUBJECTS.slice(), settings:{gasApiUrl:localStorage.getItem('gas_api_url')||DEFAULT_GAS_API_URL,wheelExclude:true,filmExclude:true,tickLast10:false,timerColor:'#0d9488'},
   competition:defaultCompetition(students),
+  accounts:DEFAULT_ACCOUNTS.map(a=>({id:safeId('acc_'+a.username,'acc'),username:a.username,password:a.password||a.pin||'123456',fullname:a.fullname,role:a.role,assignedClass:a.assignedClass,assignedGroup:a.assignedGroup,status:'active',phone:'',updatedAt:new Date().toISOString()})),
   wheelExcluded:[],filmExcluded:[]
  }
 
@@ -522,19 +534,10 @@ function applySchoolProfileMigration(x){
  if(!x.teacher.school||x.teacher.school==='Trường THCS')x.teacher.school='THCS Quang Trung';
  return x;
 }
+function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const normalized=normalizeState(JSON.parse(raw)),upgraded=applySchoolProfileMigration(applyOfficialRosterMigration(normalized));try{localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded))}catch(e){}return upgraded}catch(e){console.warn('Không đọc được dữ liệu đã lưu',e);return defaultState()}}
 let state=loadState();
 let chartRefs=[]; let mainModal; let countdownInterval=null; let countdown={total:300,left:300,running:false}; let quietInterval=null; let quietLeft=0; let micCtx=null,micStream=null,micRAF=null;
-function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const normalized=normalizeState(JSON.parse(raw)),upgraded=applySchoolProfileMigration(applyOfficialRosterMigration(normalized));try{localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded))}catch(e){}return upgraded}catch(e){console.warn('Không đọc được dữ liệu đã lưu',e);return defaultState()}}
-const DEFAULT_ACCOUNTS = [
-  { username: 'admin', password: 'admin123', fullname: 'Ban Giám Hiệu', role: 'admin', assignedClass: '*', assignedGroup: '*' },
-  { username: 'gv_8a6', password: '123456', fullname: 'Lê Tâm (GVCN 8A6)', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*' },
-  { username: 'gv_8a1', password: '123456', fullname: 'Nguyễn Văn A (GVCN 8A1)', role: 'teacher', assignedClass: 'class_8a1', assignedGroup: '*' },
-  // Tài khoản Tổ Trưởng mẫu cục bộ (PIN mặc định: 1234)
-  { username: 'totruong_8a6_t1', pin: '1234', fullname: 'Tổ Trưởng Tổ 1 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 1' },
-  { username: 'totruong_8a6_t2', pin: '1234', fullname: 'Tổ Trưởng Tổ 2 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 2' },
-  { username: 'totruong_8a6_t3', pin: '1234', fullname: 'Tổ Trưởng Tổ 3 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 3' },
-  { username: 'totruong_8a6_t4', pin: '1234', fullname: 'Tổ Trưởng Tổ 4 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 4' }
-];
+
 
 function ensureLocalAccountsForClass(classId, className, teacherName) {
   if (!classId) return;
@@ -542,9 +545,50 @@ function ensureLocalAccountsForClass(classId, className, teacherName) {
   const teacherUser = `gv_${cleanSuffix}`;
   const teacherDisplay = teacherName ? `${teacherName} (GVCN ${className})` : `GVCN ${className}`;
   
-  let existingTeacher = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === teacherUser || (a.role === 'teacher' && a.assignedClass === classId));
-  if (existingTeacher) {
-    if (teacherName) existingTeacher.fullname = teacherDisplay;
+  if (state && Array.isArray(state.accounts)) {
+    let existingTeacher = state.accounts.find(a => a.username.toLowerCase() === teacherUser || (a.role === 'teacher' && a.assignedClass === classId));
+    if (existingTeacher) {
+      if (teacherName) existingTeacher.fullname = teacherDisplay;
+      existingTeacher.assignedClass = classId;
+    } else {
+      state.accounts.push({
+        id: uid('acc'),
+        username: teacherUser,
+        password: '123456',
+        fullname: teacherDisplay,
+        role: 'teacher',
+        assignedClass: classId,
+        assignedGroup: '*',
+        status: 'active',
+        phone: '',
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'].forEach((grp, idx) => {
+      const tNum = idx + 1;
+      const ttUser = `totruong_${cleanSuffix}_t${tNum}`;
+      const exists = state.accounts.some(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === grp);
+      if (!exists) {
+        state.accounts.push({
+          id: uid('acc'),
+          username: ttUser,
+          password: '1234',
+          fullname: `Tổ Trưởng ${grp} (${className})`,
+          role: 'group_leader',
+          assignedClass: classId,
+          assignedGroup: grp,
+          status: 'active',
+          phone: '',
+          updatedAt: new Date().toISOString()
+        });
+      }
+    });
+  }
+
+  let existingTeacherDef = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === teacherUser || (a.role === 'teacher' && a.assignedClass === classId));
+  if (existingTeacherDef) {
+    if (teacherName) existingTeacherDef.fullname = teacherDisplay;
   } else {
     DEFAULT_ACCOUNTS.push({
       username: teacherUser,
@@ -695,8 +739,12 @@ async function handleLoginSubmit(e){
       return Swal.fire({ icon: 'error', title: 'Đăng nhập thất bại', text: res.message });
     }
   }
-  const acc = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === u && a.password === p);
+  const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+  const acc = accountsList.find(a => a.username.toLowerCase() === u && (a.password === p || a.pin === p));
   if(acc){
+    if(acc.status === 'locked'){
+      return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản này đã bị Quản trị viên tạm khóa. Vui lòng liên hệ Ban Giám Hiệu.' });
+    }
     saveUserSession(acc);
     applyUserPermissions();
     mainModal.hide();
@@ -731,8 +779,12 @@ async function handlePinLoginSubmit(e){
   }
 
   // Fallback offline nếu chưa cấu hình Cloud hoặc mất mạng
-  const acc = DEFAULT_ACCOUNTS.find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group && (a.pin === pin || a.password === pin));
+  const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+  const acc = accountsList.find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group && (a.pin === pin || a.password === pin));
   if(acc){
+    if(acc.status === 'locked'){
+      return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản tổ trưởng này đang bị tạm khóa.' });
+    }
     saveUserSession(acc);
     applyUserPermissions();
     mainModal.hide();
@@ -840,13 +892,15 @@ function buildNav(){
   if(currentUser?.role === 'group_leader'){
     const allowed = ['home', 'competition', 'timetable', 'rewards'];
     navItems = NAV.filter(([id]) => allowed.includes(id));
+  } else if(currentUser?.role !== 'admin'){
+    navItems = NAV.filter(([id]) => id !== 'accounts');
   }
   document.getElementById('sideNav').innerHTML=navItems.map(([id,ic,label,b])=>{
     let displayLabel = label;
     if(currentUser?.role === 'group_leader' && id === 'competition'){
       displayLabel = 'Chấm điểm tổ';
     }
-    return `<a class="nav-link ${state.currentPage===id?'active':''}" data-page="${id}" onclick="navigate('${id}')"><i class="fa-solid ${ic}"></i><span>${displayLabel}</span>${b==='count'?`<span class="mini-badge new">${n}</span>`:b?`<span class="mini-badge ${b==='NEW'?'new':''}">${b}</span>`:''}</a>`;
+    return `<a class="nav-link ${state.currentPage===id?'active':''}" data-page="${id}" onclick="navigate('${id}')"><i class="fa-solid ${ic}"></i><span>${displayLabel}</span>${b==='count'?`<span class="mini-badge new">${n}</span>`:b?`<span class="mini-badge ${b==='NEW'?'new':b==='ADMIN'?'bg-danger text-white':''}">${b}</span>`:''}</a>`;
   }).join('');
 }
 function renderHeader(){
@@ -888,6 +942,9 @@ function renderHeader(){
 }
 function classStudentsFor(id){return state.students.filter(s=>s.classId===id)}
 function navigate(page){
+  if(page === 'accounts' && currentUser?.role !== 'admin'){
+    return toast('Chỉ Quản trị viên (Admin) mới có quyền truy cập mục Quản trị GVCN', 'warning');
+  }
   if(currentUser?.role === 'group_leader' && !['home', 'competition', 'timetable', 'rewards'].includes(page)){
     return toast('Tổ trưởng không có quyền truy cập mục này', 'warning');
   }
@@ -901,7 +958,7 @@ function navigate(page){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function switchClass(id){state.activeClassId=id;state.wheelExcluded=[];state.filmExcluded=[];saveState();buildNav();renderHeader();renderPage()}
-function renderPage(){chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});chartRefs=[];const root=document.getElementById('appContent');root.classList.remove('fade-in');void root.offsetWidth;root.classList.add('fade-in');const fn={home:renderHome,classes:renderClasses,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;root.innerHTML=fn(); setTimeout(afterRender,0)}
+function renderPage(){chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});chartRefs=[];const root=document.getElementById('appContent');root.classList.remove('fade-in');void root.offsetWidth;root.classList.add('fade-in');const fn={home:renderHome,classes:renderClasses,accounts:renderAccounts,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;root.innerHTML=fn(); setTimeout(afterRender,0)}
 function afterRender(){if(state.currentPage==='home')drawHomeChart();if(state.currentPage==='stats')drawStatsCharts();if(state.currentPage==='competition')drawCompetitionChart();if(state.currentPage==='wheel')positionWheelBalls();if(state.currentPage==='countdown')updateCountdownUI()}
 function logTransaction(studentId,amount,reason='Điều chỉnh xu',subject='Ghi chung / Nề nếp'){const s=state.students.find(x=>x.id===studentId);if(!s)return 0;const before=Math.max(0,finiteNum(s.coins,0)),requested=finiteNum(amount,0),after=Math.max(0,before+requested),applied=after-before;if(!applied)return 0;s.coins=after;state.transactions.unshift({id:uid('tx'),classId:s.classId,studentId,studentName:s.name,amount:applied,reason,subject,time:new Date().toISOString()});saveState(false);return applied}
 function renderHome(){const ss=classStudents(),att=state.attendance[state.activeClassId+'_'+today()]||{},present=ss.filter(st=>att[st.id]==='present').length,marked=ss.filter(st=>att[st.id]&&att[st.id]!=='unmarked').length,totalCoins=ss.reduce((a,st)=>a+(st.coins||0),0),ws=weekStartDate(today()),rows=competitionRows(ws),avg=rows.length?rows.reduce((a,r)=>a+r.total,0)/rows.length:state.competition.baseScore,top=rows.slice(0,5);const curSess=getClassSession(),sessionBadge=curSess==='morning'?'<span class="badge bg-warning text-dark"><i class="fa-solid fa-sun me-1"></i>Buổi Sáng (Khối 7, 9)</span>':'<span class="badge bg-info text-dark"><i class="fa-solid fa-cloud-sun me-1"></i>Buổi Chiều (Khối 6, 8)</span>';const dow=new Date().getDay(),slotOrder=timeSlots(curSess).filter(s=>s.editable).map(s=>s.id),todayLessons=(dow>=1&&dow<=5)?state.timetable.entries.filter(e=>e.classId===state.activeClassId&&e.day===dow-1).sort((a,b)=>slotOrder.indexOf(a.slot)-slotOrder.indexOf(b.slot)):[];return `
@@ -919,6 +976,7 @@ function renderClasses(){
         <p>Nạp nhanh danh sách lớp bằng file Excel hoặc thêm từng lớp riêng lẻ.</p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
+        ${currentUser?.role === 'admin' ? '<button class="btn btn-outline-primary" onclick="navigate(\'accounts\')"><i class="fa-solid fa-user-shield me-1"></i>Quản trị GVCN toàn trường</button>' : ''}
         <button class="btn btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-file-arrow-down me-1"></i>Tải mẫu Excel</button>
         <button class="btn btn-success" onclick="openImportClassesModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập lớp từ Excel</button>
         <button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button>
@@ -941,7 +999,15 @@ function renderClasses(){
           <div class="mt-2 py-1 px-2 rounded bg-light border text-truncate small" title="${esc(c.teacherName || 'Chưa phân công')}">
             <i class="fa-solid fa-user-tie text-primary me-1"></i>GVCN: <b>${esc(c.teacherName || 'Chưa phân công')}</b>
           </div>
-          <div class="coin-pill mt-2"><i class="fa-solid fa-users"></i>${classStudentsFor(c.id).length} học sinh</div>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <div class="coin-pill m-0"><i class="fa-solid fa-users"></i>${classStudentsFor(c.id).length} học sinh</div>
+            ${currentUser?.role === 'admin' ? `
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-sm btn-outline-primary py-0 px-2" title="Phân công GVCN cho lớp" onclick="openAssignTeacherModal('', '${c.id}')"><i class="fa-solid fa-user-gear me-1"></i>Phân công</button>
+                <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="Cấp / Đổi mật khẩu GVCN" onclick="openClassTeacherPasswordModal('${c.id}')"><i class="fa-solid fa-key"></i></button>
+              </div>
+            ` : ''}
+          </div>
           <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
             <button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')"><i class="fa-solid fa-door-open me-1"></i>Vào không gian lớp</button>
             <div>
@@ -966,7 +1032,13 @@ function openClassModal(id=''){
       </div>
       <div class="mb-3">
         <label class="form-label fw-bold">Giáo viên chủ nhiệm (GVCN)</label>
-        <input id="cTeacherName" class="form-control" value="${esc(c.teacherName || '')}" placeholder="Ví dụ: Thầy Lê Tâm, Cô Nguyễn Thị Mai">
+        <div class="input-group">
+          <span class="input-group-text"><i class="fa-solid fa-user-tie"></i></span>
+          <input id="cTeacherName" list="teacherNamesList" class="form-control" value="${esc(c.teacherName || '')}" placeholder="Chọn hoặc nhập tên GVCN (ví dụ: Thầy Lê Tâm)">
+        </div>
+        <datalist id="teacherNamesList">
+          ${(state.accounts || []).filter(a => a.role === 'teacher').map(a => `<option value="${esc(a.fullname)}">${esc(a.username)}</option>`).join('')}
+        </datalist>
         <small class="text-muted">Hệ thống sẽ tự động cập nhật tài khoản giáo viên cho lớp này.</small>
       </div>
       <div class="row g-3">
@@ -3031,6 +3103,643 @@ function showModal(title,html){document.getElementById('mainModalTitle').textCon
 function showGuide(){Swal.fire({width:760,title:'Hướng dẫn nhanh',html:`<div class="text-start"><p><b>1. Lớp học:</b> tạo lớp và chọn lớp đang quản lý ở thanh trên.</p><p><b>2. Học sinh:</b> thêm hồ sơ, ảnh, cộng/trừ xu theo môn và lý do.</p><p><b>Danh sách 8A6:</b> bản V5.1 đã nạp 43 học sinh từ danh sách lớp; chỉ lưu họ tên và giới tính để giảm dữ liệu nhạy cảm.</p><p><b>3. Điểm danh:</b> Có mặt, Đi muộn, Có phép, Không phép; trạng thái tự đi vào điểm thi đua tuần.</p><p><b>4. Thi đua tuần:</b> mỗi học sinh 100 điểm gốc; ghi nề nếp, xếp hạng cá nhân/tổ, chốt tuần và xuất Excel/PDF.</p><p><b>5. Sơ đồ lớp:</b> xếp ngẫu nhiên hoặc chọn từng bàn, sau đó xuất PNG.</p><p><b>6. Trò chơi:</b> Vòng quay và Cuộn phim chọn ngẫu nhiên, có thể loại người đã trúng và thưởng xu.</p><p><b>7. Chống ồn:</b> cảnh báo toàn màn hình, timer im lặng, đo âm lượng microphone.</p><p><b>8. Báo cáo:</b> thống kê theo học sinh/môn, xuất XLSX và PDF.</p><p><b>9. Dữ liệu:</b> mọi thứ lưu trong <code>localStorage</code>; nên xuất JSON để sao lưu.</p></div>`,confirmButtonText:'Đã hiểu'})}
 function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 function confettiLite(){for(let i=0;i<24;i++){const p=document.createElement('i');p.style.cssText=`position:fixed;z-index:100000;left:${Math.random()*100}vw;top:-10px;width:8px;height:12px;background:hsl(${Math.random()*360} 80% 55%);transform:rotate(${Math.random()*180}deg);transition:all ${1+Math.random()*1.4}s ease-in;pointer-events:none`;document.body.appendChild(p);requestAnimationFrame(()=>{p.style.top='105vh';p.style.transform+=` translateX(${(Math.random()-.5)*160}px) rotate(720deg)`});setTimeout(()=>p.remove(),2600)}}
+
+/* ==========================================================================
+   VAI TRÒ QUẢN TRỊ VIÊN: PHÂN CÔNG GVCN & QUẢN LÝ / CẤP MẬT KHẨU TOÀN TRƯỜNG
+   ========================================================================== */
+
+function renderAccounts(){
+  const accounts = (state.accounts && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+  const teachers = accounts.filter(a => a.role === 'teacher' || a.role === 'admin');
+  const assignedCount = state.classes.filter(c => c.teacherName && c.teacherName.trim() && c.teacherName !== 'Chưa phân công').length;
+  const unassignedCount = Math.max(0, state.classes.length - assignedCount);
+  const activeCount = teachers.filter(a => a.status === 'active').length;
+  const lockedCount = teachers.filter(a => a.status === 'locked').length;
+
+  return `
+    <div class="section-head">
+      <div>
+        <h2><i class="fa-solid fa-user-shield text-primary me-2"></i>Quản Trị Phân Công & Cấp Mật Khẩu Toàn Trường</h2>
+        <p>Phân công giáo viên chủ nhiệm cho từng lớp, tạo tài khoản và cấp mật khẩu trực tiếp.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-success" onclick="exportTeacherAccountsExcel()"><i class="fa-solid fa-file-excel me-1"></i>Xuất danh sách cấp mật khẩu</button>
+        <button class="btn btn-outline-primary" onclick="openAssignTeacherModal()"><i class="fa-solid fa-arrow-right-arrow-left me-1"></i>Phân công nhanh GVCN</button>
+        <button class="btn btn-primary" onclick="openCreateTeacherModal()"><i class="fa-solid fa-user-plus me-1"></i>Thêm giáo viên mới</button>
+        <button class="btn btn-outline-secondary" onclick="pullAccountsFromCloud()"><i class="fa-solid fa-cloud-arrow-down me-1"></i>Đồng bộ Cloud</button>
+      </div>
+    </div>
+
+    <!-- STATS CARDS -->
+    <div class="stats-grid mb-3">
+      <div class="stat-card">
+        <div class="label">Tổng số Giáo viên</div>
+        <div class="value">${teachers.filter(a => a.role === 'teacher').length}</div>
+        <small>Toàn trường</small>
+        <i class="fa-solid fa-chalkboard-user"></i>
+      </div>
+      <div class="stat-card">
+        <div class="label">Lớp đã có GVCN</div>
+        <div class="value">${assignedCount}/${state.classes.length}</div>
+        <small>${Math.round(assignedCount / (state.classes.length || 1) * 100)}% lớp đã có chủ nhiệm</small>
+        <i class="fa-solid fa-school-circle-check"></i>
+      </div>
+      <div class="stat-card">
+        <div class="label">Lớp chưa có GVCN</div>
+        <div class="value">${unassignedCount}</div>
+        <small>${unassignedCount === 0 ? 'Đã đủ GVCN' : 'Cần phân công thêm'}</small>
+        <i class="fa-solid fa-school-circle-exclamation"></i>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tài khoản Hoạt động</div>
+        <div class="value">${activeCount}</div>
+        <small>${lockedCount > 0 ? lockedCount + ' tài khoản bị khóa' : 'Tất cả đang hoạt động'}</small>
+        <i class="fa-solid fa-shield-check"></i>
+      </div>
+    </div>
+
+    <!-- MAIN ACCOUNTS MANAGEMENT CARD -->
+    <div class="card p-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h5 class="fw-bold m-0"><i class="fa-solid fa-list-check me-2 text-primary"></i>Danh Sách Tài Khoản & Phân Công Lớp</h5>
+        <div class="d-flex gap-2 flex-wrap">
+          <select id="accGradeFilter" class="form-select form-select-sm" style="width:160px" onchange="filterAccountsTable()">
+            <option value="">Tất cả các khối</option>
+            <option value="Khối 6">Khối 6</option>
+            <option value="Khối 7">Khối 7</option>
+            <option value="Khối 8">Khối 8</option>
+            <option value="Khối 9">Khối 9</option>
+            <option value="unassigned">Chưa phân công lớp</option>
+          </select>
+          <select id="accStatusFilter" class="form-select form-select-sm" style="width:150px" onchange="filterAccountsTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="locked">Đã bị khóa</option>
+          </select>
+          <div class="input-group input-group-sm" style="width:220px">
+            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input id="accSearch" class="form-control" placeholder="Tìm tên, username, lớp..." oninput="filterAccountsTable()">
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="accountsTable">
+          <thead class="table-light">
+            <tr>
+              <th style="width:50px" class="text-center">STT</th>
+              <th>Giáo Viên</th>
+              <th>Vai Trò</th>
+              <th>Lớp Chủ Nhiệm</th>
+              <th>Mật Khẩu Khởi Tạo</th>
+              <th class="text-center">Trạng Thái</th>
+              <th class="text-end" style="min-width:170px">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${teachers.map((a, idx) => {
+              const assignedCls = state.classes.find(c => c.id === a.assignedClass || c.name === a.assignedClass);
+              const clsGrade = assignedCls?.grade || '';
+              const isAssigned = !!assignedCls;
+              const isLocked = a.status === 'locked';
+              const isAdmin = a.role === 'admin';
+
+              return `
+                <tr data-grade="${esc(clsGrade)}" data-assigned="${isAssigned?'yes':'no'}" data-status="${esc(a.status || 'active')}" data-search="${esc((a.fullname + ' ' + a.username + ' ' + (assignedCls?.name || '') + ' ' + (a.phone || '')).toLowerCase())}">
+                  <td class="text-center text-muted fw-bold">${idx + 1}</td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="avatar" style="width:36px;height:36px;font-size:.9rem">${esc(initials(a.fullname))}</div>
+                      <div>
+                        <div class="fw-bold">${esc(a.fullname)}</div>
+                        <div class="small text-muted font-monospace"><i class="fa-solid fa-user me-1"></i>${esc(a.username)}${a.phone ? ' · ' + esc(a.phone) : ''}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    ${isAdmin ? '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>Quản trị viên</span>' : '<span class="badge bg-primary"><i class="fa-solid fa-chalkboard-user me-1"></i>GVCN</span>'}
+                  </td>
+                  <td>
+                    ${isAdmin ? '<span class="badge bg-light text-secondary border">Toàn quyền các lớp (*)</span>' : assignedCls ? `
+                      <div>
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-bold fs-6">Lớp ${esc(assignedCls.name)}</span>
+                        <div class="small text-muted mt-1">${esc(assignedCls.grade)} · ${getClassSession(assignedCls.id)==='morning'?'☀️ Sáng':'🌤️ Chiều'}</div>
+                      </div>
+                    ` : '<span class="badge bg-secondary-subtle text-secondary border">Chưa phân công</span>'}
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <span id="pwd_val_${esc(a.username)}" class="font-monospace fw-bold" data-raw="${esc(a.password || '123456')}">••••••••</span>
+                      <button class="btn btn-sm btn-link p-0 text-muted" title="Xem / Ẩn mật khẩu" onclick="togglePasswordVisibility('${esc(a.username)}')">
+                        <i id="pwd_eye_${esc(a.username)}" class="fa-solid fa-eye"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    ${isLocked ? `
+                      <span class="badge bg-danger" title="Tài khoản đang bị khóa"><i class="fa-solid fa-lock me-1"></i>Đã khóa</span>
+                    ` : `
+                      <span class="badge bg-success" title="Tài khoản hoạt động bình thường"><i class="fa-solid fa-circle-check me-1"></i>Hoạt động</span>
+                    `}
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      ${!isAdmin ? `
+                        <button class="btn btn-outline-primary" title="Phân công / Đổi lớp chủ nhiệm" onclick="openAssignTeacherModal('${esc(a.username)}', '${esc(a.assignedClass || '')}')">
+                          <i class="fa-solid fa-arrow-right-arrow-left"></i> Phân công
+                        </button>
+                      ` : ''}
+                      <button class="btn btn-outline-secondary" title="Đặt lại mật khẩu" onclick="openChangeTeacherPasswordModal('${esc(a.username)}')">
+                        <i class="fa-solid fa-key"></i> Đổi pass
+                      </button>
+                      ${!isAdmin ? `
+                        <button class="btn ${isLocked ? 'btn-outline-success' : 'btn-outline-warning'}" title="${isLocked ? 'Mở khóa tài khoản' : 'Tạm khóa tài khoản'}" onclick="toggleTeacherAccountStatus('${esc(a.username)}')">
+                          <i class="fa-solid ${isLocked ? 'fa-lock-open' : 'fa-lock'}"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" title="Xóa tài khoản" onclick="deleteTeacherAccount('${esc(a.username)}')">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>
+                      ` : ''}
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function filterAccountsTable(){
+  const grade = document.getElementById('accGradeFilter')?.value || '';
+  const status = document.getElementById('accStatusFilter')?.value || '';
+  const q = (document.getElementById('accSearch')?.value || '').trim().toLowerCase();
+
+  document.querySelectorAll('#accountsTable tbody tr').forEach(tr => {
+    const trGrade = tr.getAttribute('data-grade') || '';
+    const trAssigned = tr.getAttribute('data-assigned') || 'yes';
+    const trStatus = tr.getAttribute('data-status') || 'active';
+    const trSearch = tr.getAttribute('data-search') || '';
+
+    let matchGrade = true;
+    if (grade === 'unassigned') {
+      matchGrade = trAssigned === 'no';
+    } else if (grade) {
+      matchGrade = trGrade === grade;
+    }
+
+    const matchStatus = !status || trStatus === status;
+    const matchSearch = !q || trSearch.includes(q);
+
+    tr.style.display = (matchGrade && matchStatus && matchSearch) ? '' : 'none';
+  });
+}
+
+function openCreateTeacherModal(){
+  const availableClasses = state.classes || [];
+  const classOpts = ['<option value="">-- Chưa phân công lớp --</option>', ...availableClasses.map(c => `
+    <option value="${c.id}">Lớp ${esc(c.name)} (${esc(c.grade)}) - Hiện tại: ${esc(c.teacherName || 'Chưa có GVCN')}</option>
+  `)].join('');
+
+  showModal('Thêm Giáo Viên & Cấp Tài Khoản Mới', `
+    <form onsubmit="saveTeacherAccount(event)">
+      <div class="mb-3">
+        <label class="form-label fw-bold">Họ và tên Giáo viên *</label>
+        <input id="newTeacherFullname" class="form-control" required placeholder="Ví dụ: Cô Nguyễn Thị Mai, Thầy Lê Tâm" oninput="autoSuggestTeacherUsername()">
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Tên đăng nhập *</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+            <input id="newTeacherUsername" class="form-control" required placeholder="Ví dụ: gv_ntmai hoặc gv_6a1">
+          </div>
+          <small class="text-muted">Chữ thường không dấu, dùng để đăng nhập hệ thống.</small>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Số điện thoại / Zalo</label>
+          <input id="newTeacherPhone" class="form-control" placeholder="Ví dụ: 0912345678">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Mật khẩu khởi tạo *</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+          <input id="newTeacherPassword" class="form-control font-monospace fw-bold" required value="123456">
+          <button type="button" class="btn btn-outline-secondary" onclick="generateRandomPassword('newTeacherPassword')">
+            <i class="fa-solid fa-shuffle me-1"></i>Tạo an toàn
+          </button>
+        </div>
+        <small class="text-muted">Mật khẩu ban đầu để cấp cho giáo viên đăng nhập lần đầu.</small>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Phân công Lớp chủ nhiệm</label>
+        <select id="newTeacherClass" class="form-select">
+          ${classOpts}
+        </select>
+        <small class="text-muted">Hệ thống sẽ tự động liên kết tài khoản giáo viên với lớp này.</small>
+      </div>
+      <div class="text-end mt-4">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-plus me-1"></i>Tạo & Cấp Tài Khoản</button>
+      </div>
+    </form>
+  `);
+}
+
+function autoSuggestTeacherUsername(){
+  const fn = document.getElementById('newTeacherFullname')?.value.trim() || '';
+  const uEl = document.getElementById('newTeacherUsername');
+  if(!uEl || uEl.dataset.customEdited === 'true') return;
+  if(!fn){ uEl.value = ''; return; }
+  const clean = fn.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d").replace(/[^a-z0-9]/g, "");
+  uEl.value = 'gv_' + clean.slice(0, 15);
+}
+
+function saveTeacherAccount(e){
+  e.preventDefault();
+  const fullname = document.getElementById('newTeacherFullname').value.trim();
+  const username = document.getElementById('newTeacherUsername').value.trim().toLowerCase();
+  const password = document.getElementById('newTeacherPassword').value.trim();
+  const phone = document.getElementById('newTeacherPhone')?.value.trim() || '';
+  const classId = document.getElementById('newTeacherClass')?.value || '';
+
+  if (!username) return toast('Tên đăng nhập không được trống', 'warning');
+  if (!password) return toast('Mật khẩu không được trống', 'warning');
+
+  state.accounts = state.accounts || [];
+  if (state.accounts.some(a => a.username === username)) {
+    return Swal.fire({ icon: 'error', title: 'Tên đăng nhập đã tồn tại', text: `Tài khoản ${username} đã có người sử dụng. Vui lòng chọn tên đăng nhập khác.` });
+  }
+
+  const newAcc = {
+    id: uid('acc'),
+    username,
+    password,
+    fullname,
+    role: 'teacher',
+    assignedClass: classId || '*',
+    assignedGroup: '*',
+    status: 'active',
+    phone,
+    updatedAt: new Date().toISOString()
+  };
+  state.accounts.push(newAcc);
+
+  // Nếu có phân công lớp
+  if (classId) {
+    const cls = state.classes.find(c => c.id === classId);
+    if (cls) {
+      cls.teacherName = fullname;
+    }
+  }
+
+  saveState();
+  mainModal.hide();
+  renderPage();
+  toast(`Đã tạo tài khoản cho GV ${fullname}!`);
+
+  callGasApi('save_account', {
+    accountData: newAcc
+  });
+  if (classId) {
+    callGasApi('assign_teacher_to_class', {
+      username,
+      classId,
+      teacherName: fullname
+    });
+  }
+}
+
+function openAssignTeacherModal(targetUsername = '', targetClassId = ''){
+  const teachers = (state.accounts || []).filter(a => a.role === 'teacher');
+  const classes = state.classes || [];
+
+  const teacherOpts = teachers.map(t => {
+    const cls = classes.find(c => c.id === t.assignedClass);
+    return `<option value="${t.username}" ${t.username === targetUsername ? 'selected' : ''}>${esc(t.fullname)} (${esc(t.username)}) - ${cls ? 'Đang CN lớp ' + esc(cls.name) : 'Chưa có lớp'}</option>`;
+  }).join('');
+
+  const classOpts = classes.map(c => `
+    <option value="${c.id}" ${c.id === targetClassId ? 'selected' : ''}>Lớp ${esc(c.name)} (${esc(c.grade)}) - Hiện tại: ${esc(c.teacherName || 'Chưa phân công')}</option>
+  `).join('');
+
+  showModal('Phân Công Giáo Viên Chủ Nhiệm', `
+    <form onsubmit="saveTeacherAssignment(event)">
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Chọn giáo viên và lớp tương ứng. Hệ thống sẽ tự động cập nhật phân quyền và tên GVCN trên toàn bộ báo cáo, thi đua và điểm danh.
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Chọn Giáo viên Chủ nhiệm *</label>
+        <select id="assignTeacherUsername" class="form-select" required>
+          ${teacherOpts}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Phân công phụ trách Lớp *</label>
+        <select id="assignClassId" class="form-select" required>
+          ${classOpts}
+        </select>
+      </div>
+      <div class="text-end mt-4">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu Phân Công</button>
+      </div>
+    </form>
+  `);
+}
+
+function saveTeacherAssignment(e){
+  e.preventDefault();
+  const username = document.getElementById('assignTeacherUsername').value;
+  const classId = document.getElementById('assignClassId').value;
+
+  const teacher = (state.accounts || []).find(a => a.username === username);
+  const targetClass = (state.classes || []).find(c => c.id === classId);
+
+  if (!teacher || !targetClass) return toast('Không tìm thấy thông tin hợp lệ', 'error');
+
+  // Gỡ phân công lớp cũ của giáo viên này nếu có
+  const oldClassId = teacher.assignedClass;
+  if (oldClassId && oldClassId !== '*' && oldClassId !== classId) {
+    const oldCls = state.classes.find(c => c.id === oldClassId);
+    if (oldCls && oldCls.teacherName === teacher.fullname) {
+      oldCls.teacherName = 'Chưa phân công';
+    }
+  }
+
+  // Cập nhật tài khoản giáo viên
+  teacher.assignedClass = classId;
+  teacher.fullname = teacher.fullname.replace(/\(GVCN [^)]+\)/, '').trim();
+  teacher.updatedAt = new Date().toISOString();
+
+  // Cập nhật lớp học
+  targetClass.teacherName = teacher.fullname;
+
+  saveState();
+  mainModal.hide();
+  renderPage();
+  toast(`Đã phân công ${teacher.fullname} làm GVCN lớp ${targetClass.name}!`);
+
+  callGasApi('assign_teacher_to_class', {
+    username,
+    classId,
+    teacherName: teacher.fullname
+  });
+}
+
+function openChangeTeacherPasswordModal(username){
+  const acc = (state.accounts || []).find(a => a.username === username);
+  if (!acc) return toast('Không tìm thấy tài khoản', 'error');
+
+  showModal('Cấp / Đổi Mật Khẩu Giáo Viên', `
+    <form onsubmit="saveTeacherPassword(event, '${esc(username)}')">
+      <div class="card bg-light p-3 mb-3 border">
+        <div class="d-flex align-items-center gap-2">
+          <div class="avatar" style="width:40px;height:40px">${esc(initials(acc.fullname))}</div>
+          <div>
+            <h6 class="fw-bold m-0">${esc(acc.fullname)}</h6>
+            <div class="small text-muted font-monospace">Tài khoản: <b>${esc(acc.username)}</b> · Vai trò: ${acc.role === 'admin' ? 'Quản trị viên' : 'GVCN'}</div>
+          </div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Mật khẩu mới *</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+          <input id="changeTeacherPasswordInput" class="form-control font-monospace fs-5 fw-bold" required placeholder="Nhập mật khẩu mới">
+          <button type="button" class="btn btn-outline-secondary" onclick="generateRandomPassword('changeTeacherPasswordInput')">
+            <i class="fa-solid fa-shuffle me-1"></i>Tạo an toàn
+          </button>
+        </div>
+        <small class="text-muted">Mật khẩu tối thiểu từ 4 ký tự. Sau khi đổi, giáo viên dùng mật khẩu mới này để đăng nhập ngay.</small>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-4 pt-2 border-top">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('changeTeacherPasswordInput').value='123456'">
+          Đặt về '123456'
+        </button>
+        <div>
+          <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i>Cập Nhật Mật Khẩu</button>
+        </div>
+      </div>
+    </form>
+  `);
+}
+
+function saveTeacherPassword(e, username){
+  e.preventDefault();
+  const newPassword = document.getElementById('changeTeacherPasswordInput').value.trim();
+  if (!newPassword) return toast('Mật khẩu không được để trống', 'warning');
+
+  const acc = (state.accounts || []).find(a => a.username === username);
+  if (!acc) return toast('Không tìm thấy tài khoản', 'error');
+
+  acc.password = newPassword;
+  acc.updatedAt = new Date().toISOString();
+
+  saveState();
+  mainModal.hide();
+  renderPage();
+  Swal.fire({
+    icon: 'success',
+    title: 'Đã cập nhật mật khẩu!',
+    html: `Mật khẩu mới cho tài khoản <b>${esc(username)}</b> (${esc(acc.fullname)}) là:<br><span class="badge bg-primary fs-5 font-monospace mt-2 px-3 py-2">${esc(newPassword)}</span><br><small class="text-muted mt-2 d-block">Hãy ghi nhận lại để bàn giao cho giáo viên.</small>`
+  });
+
+  callGasApi('update_teacher_password', {
+    username,
+    newPassword
+  });
+}
+
+function openClassTeacherPasswordModal(classId){
+  const cls = state.classes.find(c => c.id === classId);
+  if (!cls) return toast('Không tìm thấy lớp học', 'error');
+  const teacher = (state.accounts || []).find(a => a.assignedClass === classId || (cls.teacherName && a.fullname.includes(cls.teacherName)));
+  if (!teacher) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Chưa có tài khoản GVCN',
+      html: `Lớp <b>${esc(cls.name)}</b> hiện chưa liên kết tài khoản giáo viên.<br>Bạn có muốn tạo hoặc phân công giáo viên cho lớp này không?`,
+      showCancelButton: true,
+      confirmButtonText: 'Phân công ngay'
+    }).then(r => {
+      if (r.isConfirmed) openAssignTeacherModal('', classId);
+    });
+    return;
+  }
+  openChangeTeacherPasswordModal(teacher.username);
+}
+
+function toggleTeacherAccountStatus(username){
+  const acc = (state.accounts || []).find(a => a.username === username);
+  if (!acc) return toast('Không tìm thấy tài khoản', 'error');
+  if (acc.role === 'admin') return toast('Không thể khóa tài khoản Quản trị viên', 'warning');
+
+  const willLock = acc.status !== 'locked';
+  acc.status = willLock ? 'locked' : 'active';
+  acc.updatedAt = new Date().toISOString();
+
+  saveState();
+  renderPage();
+  toast(willLock ? `Đã tạm khóa tài khoản ${username}` : `Đã mở khóa tài khoản ${username}`, willLock ? 'warning' : 'success');
+
+  callGasApi('save_account', {
+    accountData: acc
+  });
+}
+
+function deleteTeacherAccount(username){
+  if (username === 'admin') return toast('Không thể xóa tài khoản Quản trị viên', 'warning');
+  const acc = (state.accounts || []).find(a => a.username === username);
+  if (!acc) return toast('Không tìm thấy tài khoản', 'error');
+
+  Swal.fire({
+    icon: 'warning',
+    title: 'Xóa tài khoản giáo viên?',
+    html: `Bạn có chắc chắn muốn xóa tài khoản <b>${esc(username)}</b> (${esc(acc.fullname)})?<br><small class="text-danger">Lớp được phân công sẽ chuyển về trạng thái Chưa phân công GVCN.</small>`,
+    showCancelButton: true,
+    confirmButtonText: 'Xác nhận xóa',
+    confirmButtonColor: '#dc2626'
+  }).then(r => {
+    if (r.isConfirmed) {
+      if (acc.assignedClass && acc.assignedClass !== '*') {
+        const cls = state.classes.find(c => c.id === acc.assignedClass);
+        if (cls && cls.teacherName === acc.fullname) cls.teacherName = 'Chưa phân công';
+      }
+      state.accounts = state.accounts.filter(a => a.username !== username);
+      saveState();
+      renderPage();
+      toast(`Đã xóa tài khoản ${username}`);
+      callGasApi('delete_account', { username });
+    }
+  });
+}
+
+function togglePasswordVisibility(username){
+  const el = document.getElementById('pwd_val_' + username);
+  const icon = document.getElementById('pwd_eye_' + username);
+  if (!el) return;
+  const raw = el.getAttribute('data-raw') || '123456';
+  if (el.textContent === '••••••••') {
+    el.textContent = raw;
+    if (icon) { icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+  } else {
+    el.textContent = '••••••••';
+    if (icon) { icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+  }
+}
+
+function generateRandomPassword(targetInputId = 'newTeacherPassword'){
+  const prefixes = ['Gvcn', 'Thcs', 'Gvqt', 'Qtrung'];
+  const years = ['2026', '2027', '8899', '6688', '7799'];
+  const symbols = ['@', '#', '$', '!'];
+  const pref = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const sym = symbols[Math.floor(Math.random() * symbols.length)];
+  const yr = years[Math.floor(Math.random() * years.length)];
+  const pwd = pref + sym + yr;
+
+  const inputEl = document.getElementById(targetInputId);
+  if (inputEl) inputEl.value = pwd;
+  toast('Đã tạo mật khẩu mới: ' + pwd);
+  return pwd;
+}
+
+function exportTeacherAccountsExcel(){
+  const accounts = (state.accounts && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+  const teachers = accounts.filter(a => a.role === 'teacher' || a.role === 'admin');
+
+  const rows = [
+    ['DANH SÁCH CẤP TÀI KHOẢN & MẬT KHẨU GIÁO VIÊN CHỦ NHIỆM'],
+    ['TRƯỜNG THCS QUANG TRUNG - NĂM HỌC 2025 - 2026'],
+    ['Ngày xuất: ' + new Date().toLocaleString('vi-VN')],
+    [],
+    ['STT', 'Họ và tên Giáo viên', 'Số Điện Thoại', 'Lớp Chủ Nhiệm', 'Khối', 'Tên Đăng Nhập (Username)', 'Mật Khẩu Khởi Tạo', 'Trạng Thái', 'Ghi Chú']
+  ];
+
+  teachers.forEach((t, i) => {
+    const cls = state.classes.find(c => c.id === t.assignedClass || c.name === t.assignedClass);
+    rows.push([
+      i + 1,
+      t.fullname,
+      t.phone || '',
+      cls ? cls.name : (t.role === 'admin' ? 'Toàn quyền (*)' : 'Chưa phân công'),
+      cls ? cls.grade : '',
+      t.username,
+      t.password || '123456',
+      t.status === 'locked' ? 'Đã khóa' : 'Hoạt động',
+      t.role === 'admin' ? 'Quản trị viên trường' : 'GVCN'
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [
+    { wch: 6 },
+    { wch: 26 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 10 },
+    { wch: 22 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 20 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cap_Tai_Khoan_GVCN');
+  XLSX.writeFile(wb, 'Danh_Sach_Cap_Tai_Khoan_GVCN_THCS_Quang_Trung.xlsx');
+  toast('Đã xuất file Excel cấp tài khoản');
+}
+
+async function pullAccountsFromCloud(){
+  const url = state.settings?.gasApiUrl || localStorage.getItem('gas_api_url');
+  if (!url) return toast('Chưa cài đặt link Google Apps Script URL', 'warning');
+
+  Swal.fire({
+    title: 'Đang tải danh sách tài khoản...',
+    text: 'Đang đồng bộ từ Google Sheets...',
+    allowOutsideClick: false,
+    didOpen: () => Swal.showLoading()
+  });
+
+  const res = await callGasApi('get_all_accounts');
+  if (res && res.status === 'success' && Array.isArray(res.accounts)) {
+    const cloudAccounts = res.accounts;
+    state.accounts = state.accounts || [];
+
+    cloudAccounts.forEach(ca => {
+      const idx = state.accounts.findIndex(la => la.username.toLowerCase() === ca.username.toLowerCase());
+      if (idx >= 0) {
+        state.accounts[idx] = Object.assign(state.accounts[idx], ca);
+      } else {
+        state.accounts.push({
+          id: uid('acc'),
+          ...ca
+        });
+      }
+    });
+
+    saveState();
+    Swal.fire({
+      icon: 'success',
+      title: 'Đồng bộ Cloud thành công!',
+      text: `Đã nạp ${cloudAccounts.length} tài khoản từ Google Sheets.`
+    });
+    renderPage();
+  } else {
+    Swal.fire({
+      icon: 'error',
+      title: 'Đồng bộ thất bại',
+      text: res?.message || 'Không thể lấy dữ liệu từ Google Sheets.'
+    });
+  }
+}
 
 document.addEventListener('DOMContentLoaded',()=>{
   mainModal=new bootstrap.Modal(document.getElementById('mainModal'));

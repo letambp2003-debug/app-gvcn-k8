@@ -164,6 +164,16 @@ function doPost(e) {
         return handleSaveClass(payload);
       case 'delete_class':
         return handleDeleteClass(payload);
+      case 'get_all_accounts':
+        return handleGetAllAccounts(payload);
+      case 'save_account':
+        return handleSaveAccount(payload);
+      case 'update_teacher_password':
+        return handleUpdateTeacherPassword(payload);
+      case 'assign_teacher_to_class':
+        return handleAssignTeacherToClass(payload);
+      case 'delete_account':
+        return handleDeleteAccount(payload);
       default:
         return createJsonResponse({ status: 'error', message: 'Hành động không hợp lệ: ' + action });
     }
@@ -1053,6 +1063,206 @@ function inferGradeFromName(name) {
     return `Khối ${m[1]}`;
   }
   return 'Khối 6';
+}
+
+/**
+ * 14. LẤY TẤT CẢ TÀI KHOẢN (DÀNH CHO ADMIN)
+ */
+function handleGetAllAccounts(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) return createJsonResponse({ status: 'error', message: 'Không tìm thấy bảng Tài khoản!' });
+
+  const data = sheet.getDataRange().getValues();
+  const accounts = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const username = String(row[0] || '').trim();
+    if (!username) continue;
+    let pwd = String(row[1] || '').trim();
+    if (pwd.startsWith("'")) pwd = pwd.slice(1);
+    accounts.push({
+      username: username,
+      password: pwd,
+      fullname: String(row[2] || ''),
+      role: String(row[3] || 'teacher'),
+      assignedClass: String(row[4] || '*'),
+      assignedGroup: String(row[5] || '*'),
+      status: String(row[6] || 'active')
+    });
+  }
+
+  return createJsonResponse({
+    status: 'success',
+    accounts: accounts,
+    total: accounts.length
+  });
+}
+
+/**
+ * 15. LƯU / CẬP NHẬT TÀI KHOẢN (ADMIN)
+ */
+function handleSaveAccount(payload) {
+  const acc = payload.accountData || payload;
+  const username = String(acc.username || '').trim().toLowerCase();
+  if (!username) {
+    return createJsonResponse({ status: 'error', message: 'Tên đăng nhập không được để trống!' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.USERS);
+    sheet.appendRow(['username', 'password', 'fullname', 'role', 'assigned_class', 'assigned_group', 'status']);
+    formatHeader(sheet);
+  }
+
+  const fullname = String(acc.fullname || username);
+  const role = String(acc.role || 'teacher');
+  const assignedClass = String(acc.assignedClass || '*');
+  const assignedGroup = String(acc.assignedGroup || '*');
+  const status = String(acc.status || 'active');
+  let password = String(acc.password || '').trim();
+
+  const data = sheet.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === username) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  if (foundRow > 0) {
+    sheet.getRange(foundRow, 3).setValue(fullname);
+    sheet.getRange(foundRow, 4).setValue(role);
+    sheet.getRange(foundRow, 5).setValue(assignedClass);
+    sheet.getRange(foundRow, 6).setValue(assignedGroup);
+    sheet.getRange(foundRow, 7).setValue(status);
+    if (password) {
+      sheet.getRange(foundRow, 2).setValue("'" + password);
+    }
+  } else {
+    if (!password) password = '123456';
+    sheet.appendRow([username, "'" + password, fullname, role, assignedClass, assignedGroup, status]);
+  }
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đã lưu tài khoản ${username} thành công!`,
+    account: { username, fullname, role, assignedClass, assignedGroup, status }
+  });
+}
+
+/**
+ * 16. CẬP NHẬT MẬT KHẨU GIÁO VIÊN (ADMIN)
+ */
+function handleUpdateTeacherPassword(payload) {
+  const username = String(payload.username || '').trim().toLowerCase();
+  let newPassword = String(payload.newPassword || payload.password || '').trim();
+  if (!username) {
+    return createJsonResponse({ status: 'error', message: 'Thiếu tên đăng nhập!' });
+  }
+  if (!newPassword) {
+    return createJsonResponse({ status: 'error', message: 'Mật khẩu mới không được để trống!' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) return createJsonResponse({ status: 'error', message: 'Không tìm thấy bảng Tài khoản!' });
+
+  const data = sheet.getDataRange().getValues();
+  let updated = false;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === username) {
+      sheet.getRange(i + 1, 2).setValue("'" + newPassword);
+      updated = true;
+      break;
+    }
+  }
+
+  return createJsonResponse({
+    status: updated ? 'success' : 'error',
+    message: updated ? `Đã cập nhật mật khẩu cho tài khoản ${username} thành công!` : `Không tìm thấy tài khoản ${username}!`
+  });
+}
+
+/**
+ * 17. PHÂN CÔNG GIÁO VIÊN CHỦ NHIỆM CHO LỚP (ADMIN)
+ */
+function handleAssignTeacherToClass(payload) {
+  const username = String(payload.username || '').trim().toLowerCase();
+  const classId = String(payload.classId || '').trim();
+  const teacherName = String(payload.teacherName || '').trim();
+
+  if (!classId) {
+    return createJsonResponse({ status: 'error', message: 'Thiếu mã lớp học để phân công!' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const userSheet = ss.getSheetByName(SHEETS.USERS);
+  const classSheet = ss.getSheetByName(SHEETS.CLASSES);
+
+  // Cập nhật assigned_class trong TaiKhoan
+  if (userSheet && username) {
+    const userData = userSheet.getDataRange().getValues();
+    for (let i = 1; i < userData.length; i++) {
+      if (String(userData[i][0]).trim().toLowerCase() === username) {
+        userSheet.getRange(i + 1, 5).setValue(classId);
+        break;
+      }
+    }
+  }
+
+  // Cập nhật teacher_name trong LopHoc
+  if (classSheet) {
+    const classData = classSheet.getDataRange().getValues();
+    for (let i = 1; i < classData.length; i++) {
+      if (String(classData[i][0]).trim() === classId) {
+        if (teacherName) {
+          classSheet.getRange(i + 1, 5).setValue(teacherName);
+        }
+        break;
+      }
+    }
+  }
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đã phân công GVCN thành công cho lớp ${classId}!`
+  });
+}
+
+/**
+ * 18. XÓA TÀI KHOẢN (ADMIN)
+ */
+function handleDeleteAccount(payload) {
+  const username = String(payload.username || '').trim().toLowerCase();
+  if (!username) {
+    return createJsonResponse({ status: 'error', message: 'Thiếu tên đăng nhập cần xóa!' });
+  }
+  if (username === 'admin') {
+    return createJsonResponse({ status: 'error', message: 'Không thể xóa tài khoản Quản trị viên (admin)!' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) return createJsonResponse({ status: 'error', message: 'Không tìm thấy bảng Tài khoản!' });
+
+  const data = sheet.getDataRange().getValues();
+  let deleted = false;
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][0]).trim().toLowerCase() === username) {
+      sheet.deleteRow(i + 1);
+      deleted = true;
+      break;
+    }
+  }
+
+  return createJsonResponse({
+    status: deleted ? 'success' : 'error',
+    message: deleted ? `Đã xóa tài khoản ${username} thành công!` : `Không tìm thấy tài khoản ${username}!`
+  });
 }
 
 
