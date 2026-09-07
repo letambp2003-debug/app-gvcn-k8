@@ -343,8 +343,8 @@ function normalizeCompetition(raw,classes,students){const d=defaultCompetition(s
 
 function normalizeState(raw){
  const d=defaultState(),x=(raw&&typeof raw==='object')?raw:{};
- const classes=Array.isArray(x.classes)&&x.classes.length?x.classes.map((c,i)=>({id:safeId(c?.id,'class'),name:String(c?.name||`Lớp ${i+1}`).slice(0,80),grade:String(c?.grade||'').slice(0,40),year:String(c?.year||'').slice(0,40),color:/^#[0-9a-f]{6}$/i.test(c?.color||'')?c.color:'#0d9488'})):d.classes;
- const classIds=new Set(classes.map(c=>c.id));
+  const classes=Array.isArray(x.classes)&&x.classes.length?x.classes.map((c,i)=>({id:safeId(c?.id,'class'),name:String(c?.name||`Lớp ${i+1}`).slice(0,80),grade:String(c?.grade||'').slice(0,40),year:String(c?.year||'').slice(0,40),teacherName:String(c?.teacherName||'').slice(0,120),color:/^#[0-9a-f]{6}$/i.test(c?.color||'')?c.color:'#0d9488'})):d.classes;
+  const classIds=new Set(classes.map(c=>c.id));
  const students=Array.isArray(x.students)?x.students.filter(s=>classIds.has(String(s?.classId||''))).map((s,i)=>({
    id:safeId(s?.id,'s'),
    classId:String(s.classId),
@@ -396,8 +396,8 @@ function defaultState(){
   version:APP_SCHEMA_VERSION, rosterVersion:ROSTER_VERSION, activeClassId:cls, currentPage:'home',
   teacher:{name:'Lê Tâm',role:'GVCN',subject:'Toán',school:'THCS Quang Trung',avatar:''},
   classes:[
-    {id:cls,name:'8A6',grade:'Khối 8',year:'2026 - 2027',color:'#0d9488'},
-    {id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',color:'#0284c7'}
+    {id:cls,name:'8A6',grade:'Khối 8',year:'2026 - 2027',teacherName:'Lê Tâm',color:'#0d9488'},
+    {id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',teacherName:'Nguyễn Văn A',color:'#0284c7'}
   ],students,
   attendance:{},attendanceDate:today(),
   seating:{[cls]:{lanes:4,seats:Math.ceil(students.length/2),mode:'2d',assignments:{}}},
@@ -439,7 +439,7 @@ function applyOfficialRosterMigration(x){
    note:''
  }));
  x.students=[...x.students.filter(s=>s.classId!==cls),...official];
- if(!x.classes.some(c=>c.id==='class_8a1')) x.classes.push({id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',color:'#0284c7'});
+ if(!x.classes.some(c=>c.id==='class_8a1')) x.classes.push({id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',teacherName:'Nguyễn Văn A',color:'#0284c7'});
  if(!x.seating)x.seating={};x.seating[cls]={lanes:4,seats:official.length,mode:'2d',assignments:{}};
  x.filmExcluded=(x.filmExcluded||[]).filter(id=>!oldIds.has(id));
  x.wheelSelected=(x.wheelSelected||[]).filter(id=>!oldIds.has(id));
@@ -471,6 +471,47 @@ const DEFAULT_ACCOUNTS = [
   { username: 'totruong_8a6_t3', pin: '1234', fullname: 'Tổ Trưởng Tổ 3 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 3' },
   { username: 'totruong_8a6_t4', pin: '1234', fullname: 'Tổ Trưởng Tổ 4 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 4' }
 ];
+
+function ensureLocalAccountsForClass(classId, className, teacherName) {
+  if (!classId) return;
+  const cleanSuffix = classId.replace(/^class_/, '').toLowerCase();
+  const teacherUser = `gv_${cleanSuffix}`;
+  const teacherDisplay = teacherName ? `${teacherName} (GVCN ${className})` : `GVCN ${className}`;
+  
+  let existingTeacher = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === teacherUser || (a.role === 'teacher' && a.assignedClass === classId));
+  if (existingTeacher) {
+    if (teacherName) existingTeacher.fullname = teacherDisplay;
+  } else {
+    DEFAULT_ACCOUNTS.push({
+      username: teacherUser,
+      password: '123456',
+      fullname: teacherDisplay,
+      role: 'teacher',
+      assignedClass: classId,
+      assignedGroup: '*'
+    });
+  }
+
+  ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'].forEach((grp, idx) => {
+    const tNum = idx + 1;
+    const ttUser = `totruong_${cleanSuffix}_t${tNum}`;
+    const exists = DEFAULT_ACCOUNTS.some(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === grp);
+    if (!exists) {
+      DEFAULT_ACCOUNTS.push({
+        username: ttUser,
+        pin: '1234',
+        fullname: `Tổ Trưởng ${grp} (${className})`,
+        role: 'group_leader',
+        assignedClass: classId,
+        assignedGroup: grp
+      });
+    }
+  });
+}
+if(state && Array.isArray(state.classes)){
+  state.classes.forEach(c => ensureLocalAccountsForClass(c.id, c.name, c.teacherName));
+}
+
 let currentUser = loadUserSession();
 function loadUserSession(){
   try {
@@ -806,10 +847,396 @@ function renderHome(){const ss=classStudents(),att=state.attendance[state.active
 <div class="grid-equal mt-3"><div class="card p-3"><div class="d-flex justify-content-between"><h5 class="fw-bold">Thời khóa biểu hôm nay</h5><button class="btn btn-sm btn-outline-primary" onclick="navigate('timetable')">Xem lịch</button></div>${todayLessons.length?todayLessons.map(l=>`<div class="lesson mt-2"><strong>${esc(l.subject)}</strong><div class="text-muted">${esc(l.time)}</div></div>`).join(''):'<div class="empty">Hôm nay chưa có tiết học được xếp.</div>'}</div><div class="card p-3"><h5 class="fw-bold">Thao tác nhanh</h5><div class="d-grid gap-2 mt-2"><button class="btn btn-outline-primary text-start" onclick="navigate('competition')"><i class="fa-solid fa-plus-minus me-2"></i>Ghi nhận cộng/trừ nề nếp</button><button class="btn btn-outline-primary text-start" onclick="navigate('seating')"><i class="fa-solid fa-border-all me-2"></i>Xếp sơ đồ chỗ ngồi</button><button class="btn btn-outline-primary text-start" onclick="navigate('countdown')"><i class="fa-solid fa-stopwatch me-2"></i>Mở đồng hồ đếm ngược</button></div></div></div>`}
 function rankRow(s,i){const max=Math.max(1,...classStudents().map(x=>x.coins||0));return `<div class="rank-row"><div class="rank-no">${i+1}</div>${renderAvatar(s,'mini-avatar')}<div><div class="fw-bold">${esc(s.name)}</div><div class="progress-thin"><div style="width:${Math.round((s.coins||0)/max*100)}%"></div></div></div><span class="coin-pill"><i class="fa-solid fa-coins"></i>${s.coins||0}</span></div>`}
 function drawHomeChart(){const ctx=document.getElementById('homeChart');if(!ctx)return;const rows=competitionRows(weekStartDate(today())).slice(0,8);chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(13,148,136,.65)',borderColor:'#0d9488',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,suggestedMin:60}}}}))}
-function renderClasses(){return `<div class="section-head"><div><h2><i class="fa-solid fa-school text-primary me-2"></i>Quản lý Danh sách Lớp học</h2><p>Tạo thêm lớp mới hoặc chuyển nhanh không gian quản lý giữa các lớp học.</p></div><button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button></div><div class="student-grid">${state.classes.map(c=>`<div class="card hover-lift p-3"><div class="d-flex justify-content-between"><div class="avatar">${esc(c.name)}</div>${c.id===state.activeClassId?'<span class="badge bg-success align-self-start">Lớp đang chọn</span>':''}</div><h4 class="fw-bold mt-3 mb-1">${esc(c.name)}</h4><div class="text-muted">${esc(c.grade)} · Năm học ${esc(c.year)}</div><div class="coin-pill mt-2"><i class="fa-solid fa-users"></i>${classStudentsFor(c.id).length} học sinh</div><div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top"><button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')">Vào không gian lớp</button><div><button class="icon-btn d-inline-grid" onclick="openClassModal('${c.id}')"><i class="fa-solid fa-pen"></i></button> <button class="icon-btn d-inline-grid text-danger" onclick="deleteClass('${c.id}')"><i class="fa-solid fa-trash"></i></button></div></div></div>`).join('')}</div>`}
-function openClassModal(id=''){const c=state.classes.find(x=>x.id===id)||{name:'',grade:'Khối 1',year:'2026 - 2027'};showModal(id?'Sửa lớp học':'Tạo lớp học mới',`<form onsubmit="saveClass(event,'${id}')"><div class="mb-3"><label class="form-label fw-bold">Tên lớp</label><input id="cName" class="form-control" value="${esc(c.name)}" required placeholder="Ví dụ: 3/1"></div><div class="row g-3"><div class="col-md-6"><label class="form-label fw-bold">Khối</label><select id="cGrade" class="form-select">${[1,2,3,4,5,6,7,8,9,10,11,12].map(g=>`<option ${c.grade==='Khối '+g?'selected':''}>Khối ${g}</option>`).join('')}</select></div><div class="col-md-6"><label class="form-label fw-bold">Năm học</label><input id="cYear" class="form-control" value="${esc(c.year)}"></div></div><div class="text-end mt-4"><button class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu lớp</button></div></form>`)}
-function saveClass(e,id){e.preventDefault();const data={name:document.getElementById('cName').value.trim(),grade:document.getElementById('cGrade').value,year:document.getElementById('cYear').value.trim()};if(id){Object.assign(state.classes.find(x=>x.id===id),data)}else{const nid=uid('class');state.classes.push({id:nid,...data,color:'#0d9488'});state.seating[nid]={lanes:4,seats:8,mode:'2d',assignments:{}};state.activeClassId=nid}saveState();mainModal.hide();buildNav();renderHeader();renderPage();toast('Đã lưu lớp học')}
-async function deleteClass(id){if(state.classes.length===1)return toast('Phải giữ ít nhất một lớp','warning');const c=state.classes.find(x=>x.id===id);const studentIds=state.students.filter(s=>s.classId===id).map(s=>s.id);const r=await Swal.fire({icon:'warning',title:'Xóa lớp học?',html:`<div class="text-start">Lớp <b>${esc(c?.name||'')}</b> và toàn bộ dữ liệu liên quan sẽ bị xóa: học sinh, điểm danh, sơ đồ, thời khóa biểu, xu, đổi quà và lịch sử trò chơi.</div>`,showCancelButton:true,confirmButtonText:'Xóa toàn bộ',cancelButtonText:'Hủy',confirmButtonColor:'#dc2626'});if(!r.isConfirmed)return;recoverySnapshot();state.classes=state.classes.filter(c=>c.id!==id);state.students=state.students.filter(s=>s.classId!==id);state.transactions=state.transactions.filter(x=>x.classId!==id);state.redemptions=state.redemptions.filter(x=>x.classId!==id);state.wheelHistory=state.wheelHistory.filter(x=>x.classId!==id);state.filmHistory=state.filmHistory.filter(x=>x.classId!==id);state.timetable.entries=state.timetable.entries.filter(x=>x.classId!==id);state.competition.events=state.competition.events.filter(x=>x.classId!==id);Object.keys(state.competition.snapshots||{}).forEach(k=>{if(state.competition.snapshots[k]?.classId===id)delete state.competition.snapshots[k]});Object.keys(state.attendance).filter(k=>k.startsWith(id+'_')).forEach(k=>delete state.attendance[k]);delete state.seating[id];state.wheelExcluded=state.wheelExcluded.filter(x=>!studentIds.includes(x));state.filmExcluded=state.filmExcluded.filter(x=>!studentIds.includes(x));state.wheelSelected=(state.wheelSelected||[]).filter(x=>!studentIds.includes(x));if(state.activeClassId===id)state.activeClassId=state.classes[0].id;saveState();buildNav();renderHeader();renderPage();toast('Đã xóa lớp và dữ liệu liên quan')}
+function renderClasses(){
+  return `
+    <div class="section-head">
+      <div>
+        <h2><i class="fa-solid fa-school text-primary me-2"></i>Quản lý Danh sách Lớp học Toàn Trường</h2>
+        <p>Nạp nhanh danh sách lớp bằng file Excel hoặc thêm từng lớp riêng lẻ.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-file-arrow-down me-1"></i>Tải mẫu Excel</button>
+        <button class="btn btn-success" onclick="openImportClassesModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập lớp từ Excel</button>
+        <button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button>
+      </div>
+    </div>
+    <div class="student-grid">
+      ${state.classes.map(c=>`
+        <div class="card hover-lift p-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="avatar">${esc(c.name)}</div>
+            ${c.id===state.activeClassId?'<span class="badge bg-success align-self-start">Lớp đang chọn</span>':''}
+          </div>
+          <h4 class="fw-bold mt-3 mb-1">${esc(c.name)}</h4>
+          <div class="text-muted small">${esc(c.grade)} · Năm học ${esc(c.year)}</div>
+          <div class="mt-2 py-1 px-2 rounded bg-light border text-truncate small" title="${esc(c.teacherName || 'Chưa phân công')}">
+            <i class="fa-solid fa-user-tie text-primary me-1"></i>GVCN: <b>${esc(c.teacherName || 'Chưa phân công')}</b>
+          </div>
+          <div class="coin-pill mt-2"><i class="fa-solid fa-users"></i>${classStudentsFor(c.id).length} học sinh</div>
+          <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')"><i class="fa-solid fa-door-open me-1"></i>Vào không gian lớp</button>
+            <div>
+              <button class="icon-btn d-inline-grid" title="Chỉnh sửa lớp" onclick="openClassModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
+              <button class="icon-btn d-inline-grid text-danger" title="Xóa lớp" onclick="deleteClass('${c.id}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openClassModal(id=''){
+  const c = state.classes.find(x => x.id === id) || { name: '', grade: 'Khối 6', year: '2026 - 2027', teacherName: '' };
+  showModal(id ? 'Sửa thông tin lớp học' : 'Tạo lớp học mới', `
+    <form onsubmit="saveClass(event, '${id}')">
+      <div class="mb-3">
+        <label class="form-label fw-bold">Tên lớp *</label>
+        <input id="cName" class="form-control" value="${esc(c.name)}" required placeholder="Ví dụ: 6A1, 8A6, 9/2">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Giáo viên chủ nhiệm (GVCN)</label>
+        <input id="cTeacherName" class="form-control" value="${esc(c.teacherName || '')}" placeholder="Ví dụ: Thầy Lê Tâm, Cô Nguyễn Thị Mai">
+        <small class="text-muted">Hệ thống sẽ tự động cập nhật tài khoản giáo viên cho lớp này.</small>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Khối</label>
+          <select id="cGrade" class="form-select">
+            ${[1,2,3,4,5,6,7,8,9,10,11,12].map(g => `<option ${c.grade === 'Khối ' + g ? 'selected' : ''}>Khối ${g}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-bold">Năm học</label>
+          <input id="cYear" class="form-control" value="${esc(c.year)}">
+        </div>
+      </div>
+      <div class="text-end mt-4">
+        <button class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu lớp</button>
+      </div>
+    </form>
+  `);
+}
+
+function saveClass(e, id){
+  e.preventDefault();
+  const name = document.getElementById('cName').value.trim();
+  const teacherName = document.getElementById('cTeacherName').value.trim();
+  const grade = document.getElementById('cGrade').value;
+  const year = document.getElementById('cYear').value.trim();
+  const data = { name, teacherName, grade, year };
+
+  let targetId = id;
+  if(id){
+    Object.assign(state.classes.find(x => x.id === id), data);
+  } else {
+    const cleanSuffix = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let nid = 'class_' + cleanSuffix;
+    if(state.classes.some(c => c.id === nid)) {
+      nid = uid('class');
+    }
+    targetId = nid;
+    state.classes.push({ id: nid, ...data, color: '#0d9488' });
+    if(!state.seating[nid]) {
+      state.seating[nid] = { lanes: 4, seats: 8, mode: '2d', assignments: {} };
+    }
+    state.activeClassId = nid;
+  }
+
+  ensureLocalAccountsForClass(targetId, name, teacherName);
+  saveState();
+  mainModal.hide();
+  buildNav();
+  renderHeader();
+  renderPage();
+  toast('Đã lưu lớp học');
+
+  callGasApi('save_class', {
+    classData: { id: targetId, ...data }
+  });
+}
+
+async function deleteClass(id){
+  if(state.classes.length === 1) return toast('Phải giữ ít nhất một lớp', 'warning');
+  const c = state.classes.find(x => x.id === id);
+  const studentIds = state.students.filter(s => s.classId === id).map(s => s.id);
+  const r = await Swal.fire({
+    icon: 'warning',
+    title: 'Xóa lớp học?',
+    html: `<div class="text-start">Lớp <b>${esc(c?.name || '')}</b> và toàn bộ dữ liệu liên quan sẽ bị xóa: học sinh, điểm danh, sơ đồ, thời khóa biểu, xu, đổi quà và lịch sử trò chơi.</div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Xóa toàn bộ',
+    cancelButtonText: 'Hủy',
+    confirmButtonColor: '#dc2626'
+  });
+  if(!r.isConfirmed) return;
+  recoverySnapshot();
+  state.classes = state.classes.filter(c => c.id !== id);
+  state.students = state.students.filter(s => s.classId !== id);
+  state.transactions = state.transactions.filter(x => x.classId !== id);
+  state.redemptions = state.redemptions.filter(x => x.classId !== id);
+  state.wheelHistory = state.wheelHistory.filter(x => x.classId !== id);
+  state.filmHistory = state.filmHistory.filter(x => x.classId !== id);
+  state.timetable.entries = state.timetable.entries.filter(x => x.classId !== id);
+  state.competition.events = state.competition.events.filter(x => x.classId !== id);
+  Object.keys(state.competition.snapshots || {}).forEach(k => {
+    if(state.competition.snapshots[k]?.classId === id) delete state.competition.snapshots[k];
+  });
+  Object.keys(state.attendance).filter(k => k.startsWith(id + '_')).forEach(k => delete state.attendance[k]);
+  delete state.seating[id];
+  state.wheelExcluded = state.wheelExcluded.filter(x => !studentIds.includes(x));
+  state.filmExcluded = state.filmExcluded.filter(x => !studentIds.includes(x));
+  state.wheelSelected = (state.wheelSelected || []).filter(x => !studentIds.includes(x));
+  if(state.activeClassId === id) state.activeClassId = state.classes[0].id;
+  saveState();
+  buildNav();
+  renderHeader();
+  renderPage();
+  toast('Đã xóa lớp và dữ liệu liên quan');
+
+  callGasApi('delete_class', { classId: id });
+}
+
+function downloadClassesExcelTemplate(){
+  const data = [
+    { "STT": 1, "LỚP": "6A1", "GVCN": "Cô Nguyễn Thị Mai" },
+    { "STT": 2, "LỚP": "6A2", "GVCN": "Thầy Trần Hoàng Long" },
+    { "STT": 3, "LỚP": "7A1", "GVCN": "Cô Lê Thu Hà" },
+    { "STT": 4, "LỚP": "8A6", "GVCN": "Thầy Lê Tâm" },
+    { "STT": 5, "LỚP": "9A1", "GVCN": "Cô Phạm Hồng Nhung" }
+  ];
+  const ws = XLSX.utils.json_to_sheet(data, { header: ["STT", "LỚP", "GVCN"] });
+  ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 28 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "DanhSachLopHoc");
+  XLSX.writeFile(wb, "mau-tao-lop-toan-truong.xlsx");
+  toast("Đã tải xuống file mẫu tạo lớp học");
+}
+
+let parsedExcelClasses = [];
+
+function openImportClassesModal(){
+  parsedExcelClasses = [];
+  showModal('Nhập danh sách lớp học từ Excel', `
+    <div class="p-2">
+      <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border flex-wrap gap-2">
+        <div>
+          <h6 class="fw-bold mb-1"><i class="fa-solid fa-file-excel text-success me-2"></i>File mẫu chuẩn tạo lớp toàn trường</h6>
+          <small class="text-muted">Đúng chuẩn 3 cột: <b>STT | LỚP | GVCN</b></small>
+        </div>
+        <button class="btn btn-sm btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-download me-1"></i>Tải file mẫu .xlsx</button>
+      </div>
+
+      <div id="dropZoneClasses" class="text-center p-4 rounded-4 mb-3" style="border: 2px dashed #0d9488; background:#f0fdfa; cursor:pointer;" onclick="document.getElementById('classExcelFileInput').click()">
+        <i class="fa-solid fa-cloud-arrow-up fs-1 text-primary mb-2"></i>
+        <h5 class="fw-bold">Kéo & thả file Excel (.xlsx, .xls) vào đây</h5>
+        <p class="text-muted small mb-0">hoặc bấm vào khung để chọn file từ máy tính</p>
+        <input type="file" id="classExcelFileInput" accept=".xlsx, .xls, .csv" hidden onchange="handleClassExcelFileSelected(event)">
+      </div>
+
+      <div id="classExcelPreviewArea" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <span class="fw-bold text-primary" id="classExcelStats">Phát hiện: 0 lớp học</span>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="classImportMode" id="classModeMerge" value="merge" checked>
+              <label class="form-check-label fw-bold small" for="classModeMerge">Thêm mới & Cập nhật</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="classImportMode" id="classModeOverwrite" value="overwrite">
+              <label class="form-check-label fw-bold small text-danger" for="classModeOverwrite">Ghi đè toàn bộ lớp</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive border rounded-3" style="max-height:280px;">
+          <table class="table table-sm table-hover mb-0" id="classExcelPreviewTable">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th style="width:50px">STT</th>
+                <th>Tên Lớp</th>
+                <th>Khối (Tự nhận)</th>
+                <th>GVCN</th>
+                <th>Tài khoản cấp</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="alert alert-info small mt-3 mb-0">
+          <i class="fa-solid fa-circle-info me-1"></i><b>Tự động hóa thông minh:</b>
+          <ul class="mb-0 ps-3 mt-1">
+            <li>Tự động nhận diện Khối học theo số trong tên lớp (ví dụ 6A1 &rarr; Khối 6, 8A6 &rarr; Khối 8).</li>
+            <li>Tự động tạo tài khoản đăng nhập cho GVCN (ví dụ: <code>gv_6a1</code> / mật khẩu <code>123456</code>).</li>
+            <li>Tự động kích hoạt sơ đồ lớp học và 4 tài khoản Tổ trưởng (mã PIN <code>1234</code>).</li>
+            <li>Tự động đồng bộ lên Google Sheets (Bảng LopHoc & TaiKhoan).</li>
+          </ul>
+        </div>
+
+        <div class="text-end mt-4">
+          <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-primary px-4" id="confirmClassImportBtn" onclick="confirmClassesExcelImport()"><i class="fa-solid fa-circle-check me-1"></i>Xác nhận tạo danh sách lớp</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function handleClassExcelFileSelected(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: 'array', raw: false });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+
+      if(!rows.length){
+        return Swal.fire({ icon: 'warning', title: 'File trống', text: 'File Excel không có dòng dữ liệu nào.' });
+      }
+
+      parsedExcelClasses = [];
+      const seenNames = new Set();
+
+      rows.forEach((row, idx)=>{
+        const keys = Object.keys(row);
+        let stt = idx + 1, className = '', teacherName = '';
+
+        keys.forEach(k=>{
+          const ck = cleanHeaderKey(k);
+          const val = String(row[k] || '').trim();
+          if(['stt', 'sothutu', 'no'].includes(ck)) stt = Number(val) || (idx + 1);
+          else if(['lop', 'tenlop', 'class', 'classname', 'tenlophoc', 'lophoc'].includes(ck)) className = val;
+          else if(['gvcn', 'giaovienchunhiem', 'giaovien', 'tengvcn', 'teacher', 'gv', 'chunhiem'].includes(ck)) teacherName = val;
+        });
+
+        if(className && !seenNames.has(className.toLowerCase())){
+          seenNames.add(className.toLowerCase());
+          const cleanSuffix = className.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const classId = 'class_' + cleanSuffix;
+          
+          // Tự động nhận diện khối
+          const m = className.match(/(\d+)/);
+          const grade = m ? `Khối ${m[1]}` : 'Khối 6';
+          const year = '2026 - 2027';
+
+          // Kiểm tra xem lớp đã tồn tại trong state chưa
+          const existing = state.classes.find(c => c.id === classId || c.name.toLowerCase() === className.toLowerCase());
+
+          parsedExcelClasses.push({
+            stt: Number(stt) || (idx + 1),
+            id: existing ? existing.id : classId,
+            name: className,
+            grade: existing?.grade || grade,
+            year: existing?.year || year,
+            teacherName: teacherName || existing?.teacherName || '',
+            isExisting: !!existing,
+            account: `gv_${cleanSuffix}`
+          });
+        }
+      });
+
+      if(!parsedExcelClasses.length){
+        return Swal.fire({ icon: 'error', title: 'Không đọc được dữ liệu lớp', text: 'Vui lòng kiểm tra lại tiêu đề cột "LỚP" trong file Excel.' });
+      }
+
+      document.getElementById('classExcelPreviewArea').style.display = 'block';
+      document.getElementById('classExcelStats').innerHTML = `<i class="fa-solid fa-school text-primary me-1"></i>Phát hiện: <b>${parsedExcelClasses.length}</b> lớp học`;
+
+      const tbody = document.querySelector('#classExcelPreviewTable tbody');
+      tbody.innerHTML = parsedExcelClasses.map(c => `<tr>
+        <td><b>${c.stt}</b></td>
+        <td><b class="text-primary">${esc(c.name)}</b></td>
+        <td><span class="badge bg-light text-dark border">${esc(c.grade)}</span></td>
+        <td>${esc(c.teacherName || '<Chưa nhập>')}</td>
+        <td><code class="text-success">${c.account}</code></td>
+        <td>${c.isExisting ? '<span class="badge bg-info text-dark">Cập nhật</span>' : '<span class="badge bg-success">Lớp mới</span>'}</td>
+      </tr>`).join('');
+
+    } catch (err) {
+      console.error(err);
+      Swal.fire({ icon: 'error', title: 'Lỗi đọc file', text: 'Không thể xử lý file Excel. Hãy kiểm tra định dạng file.' });
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function confirmClassesExcelImport(){
+  if(!parsedExcelClasses.length) return;
+  const isOverwrite = document.getElementById('classModeOverwrite')?.checked;
+
+  recoverySnapshot();
+
+  if(isOverwrite){
+    const newClassIds = new Set(parsedExcelClasses.map(c => c.id));
+    state.classes = parsedExcelClasses.map(c => ({
+      id: c.id,
+      name: c.name,
+      grade: c.grade,
+      year: c.year,
+      teacherName: c.teacherName,
+      color: '#0d9488'
+    }));
+    state.students = state.students.filter(s => newClassIds.has(s.classId));
+  } else {
+    parsedExcelClasses.forEach(item => {
+      const idx = state.classes.findIndex(c => c.id === item.id || c.name.toLowerCase() === item.name.toLowerCase());
+      if(idx >= 0){
+        if(item.teacherName) state.classes[idx].teacherName = item.teacherName;
+        if(item.grade) state.classes[idx].grade = item.grade;
+        if(item.year) state.classes[idx].year = item.year;
+      } else {
+        state.classes.push({
+          id: item.id,
+          name: item.name,
+          grade: item.grade,
+          year: item.year,
+          teacherName: item.teacherName,
+          color: '#0d9488'
+        });
+      }
+    });
+  }
+
+  // Đảm bảo sơ đồ chỗ ngồi và tài khoản cho tất cả các lớp
+  state.classes.forEach(c => {
+    if(!state.seating[c.id]){
+      state.seating[c.id] = { lanes: 4, seats: 8, mode: '2d', assignments: {} };
+    }
+    ensureLocalAccountsForClass(c.id, c.name, c.teacherName);
+  });
+
+  if(!state.classes.some(c => c.id === state.activeClassId)){
+    state.activeClassId = state.classes[0].id;
+  }
+
+  saveState();
+  mainModal.hide();
+  buildNav();
+  renderHeader();
+  renderPage();
+  confettiLite();
+  toast(`Đã xử lý nạp thành công ${parsedExcelClasses.length} lớp học!`);
+
+  // Đồng bộ lên Google Apps Script CSDL toàn trường
+  callGasApi('import_classes', {
+    classes: parsedExcelClasses.map(c => ({
+      id: c.id,
+      name: c.name,
+      grade: c.grade,
+      year: c.year,
+      teacherName: c.teacherName
+    })),
+    mode: isOverwrite ? 'overwrite' : 'merge'
+  });
+}
+
 function maskCCCD(c){
   const str = String(c || '').trim();
   if(!str) return '<span class="text-muted">Chưa có</span>';

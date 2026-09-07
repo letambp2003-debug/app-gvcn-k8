@@ -158,6 +158,12 @@ function doPost(e) {
         return handleSaveConfig(payload);
       case 'get_all_classes':
         return handleGetAllClasses(payload);
+      case 'import_classes':
+        return handleImportClasses(payload);
+      case 'save_class':
+        return handleSaveClass(payload);
+      case 'delete_class':
+        return handleDeleteClass(payload);
       default:
         return createJsonResponse({ status: 'error', message: 'Hành động không hợp lệ: ' + action });
     }
@@ -841,6 +847,214 @@ function handleGetAllClasses(payload) {
   }
   return createJsonResponse({ status: 'success', classes: classes });
 }
+
+/**
+ * 11. NHẬP NHIỀU LỚP HỌC TỪ EXCEL (ADMIN)
+ * Hỗ trợ tạo hàng loạt lớp học từ mẫu Excel STT | LỚP | GVCN
+ */
+function handleImportClasses(payload) {
+  const list = payload.classes || [];
+  const mode = payload.mode || 'merge'; // 'merge' hoặc 'overwrite'
+  if (!list.length) {
+    return createJsonResponse({ status: 'error', message: 'Danh sách lớp học trống!' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.CLASSES);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.CLASSES);
+    sheet.appendRow(['class_id', 'class_name', 'grade', 'academic_year', 'teacher_name']);
+    formatHeader(sheet);
+  }
+
+  let userSheet = ss.getSheetByName(SHEETS.USERS);
+  if (!userSheet) {
+    userSheet = ss.insertSheet(SHEETS.USERS);
+    userSheet.appendRow(['username', 'password', 'fullname', 'role', 'assigned_class', 'assigned_group', 'status']);
+    formatHeader(userSheet);
+  }
+
+  // Nếu mode === 'overwrite', xóa các dòng lớp học cũ (giữ lại header)
+  if (mode === 'overwrite') {
+    if (sheet.getLastRow() > 1) {
+      sheet.deleteRows(2, sheet.getLastRow() - 1);
+    }
+  }
+
+  const existingData = sheet.getDataRange().getValues();
+  const classRowMap = {}; // class_id -> rowIndex (1-indexed)
+  for (let i = 1; i < existingData.length; i++) {
+    const cid = String(existingData[i][0]).trim();
+    if (cid) classRowMap[cid] = i + 1;
+  }
+
+  const rowsToAdd = [];
+  let updatedCount = 0;
+  let addedCount = 0;
+
+  list.forEach(item => {
+    const rawName = String(item.name || '').trim();
+    if (!rawName) return;
+    const cleanSuffix = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const classId = item.id || ('class_' + cleanSuffix);
+    const grade = item.grade || inferGradeFromName(rawName);
+    const year = item.year || '2026 - 2027';
+    const teacherName = String(item.teacherName || '').trim();
+
+    if (classRowMap[classId]) {
+      // Cập nhật lớp đã có
+      const rowIdx = classRowMap[classId];
+      sheet.getRange(rowIdx, 1, 1, 5).setValues([[classId, rawName, grade, year, teacherName]]);
+      updatedCount++;
+    } else {
+      // Thêm lớp mới
+      rowsToAdd.push([classId, rawName, grade, year, teacherName]);
+      addedCount++;
+    }
+
+    // Tự động tạo/cập nhật tài khoản GVCN trong TaiKhoan
+    ensureTeacherAccount(classId, rawName, teacherName);
+
+    // Tự động tạo 4 tài khoản Tổ trưởng cho lớp
+    ensureGroupLeaders(classId);
+  });
+
+  if (rowsToAdd.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAdd.length, 5).setValues(rowsToAdd);
+  }
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đã nạp thành công: ${addedCount} lớp mới, cập nhật ${updatedCount} lớp!`,
+    addedCount: addedCount,
+    updatedCount: updatedCount,
+    total: addedCount + updatedCount
+  });
+}
+
+/**
+ * Đảm bảo tài khoản GVCN được tạo hoặc cập nhật khi thêm/sửa lớp
+ */
+function ensureTeacherAccount(classId, className, teacherName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) return;
+
+  const cleanSuffix = classId.replace(/^class_/, '').toLowerCase();
+  const username = `gv_${cleanSuffix}`;
+  const defaultDisplayName = teacherName ? `${teacherName} (GVCN ${className})` : `GVCN ${className}`;
+
+  const data = sheet.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).toLowerCase() === username.toLowerCase() || 
+       (String(data[i][3]) === 'teacher' && String(data[i][4]) === classId)) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  if (foundRow > 0) {
+    if (teacherName) {
+      sheet.getRange(foundRow, 3).setValue(defaultDisplayName);
+    }
+  } else {
+    // Tạo tài khoản mới: username, password, fullname, role, assigned_class, assigned_group, status
+    sheet.appendRow([username, "'123456", defaultDisplayName, 'teacher', classId, '*', 'active']);
+  }
+}
+
+/**
+ * 12. LƯU / CẬP NHẬT 1 LỚP HỌC ĐƠN LẺ
+ */
+function handleSaveClass(payload) {
+  const classData = payload.classData || payload;
+  const rawName = String(classData.name || '').trim();
+  if (!rawName) {
+    return createJsonResponse({ status: 'error', message: 'Tên lớp không được để trống!' });
+  }
+
+  const cleanSuffix = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const classId = classData.id || ('class_' + cleanSuffix);
+  const grade = classData.grade || inferGradeFromName(rawName);
+  const year = classData.year || '2026 - 2027';
+  const teacherName = String(classData.teacherName || '').trim();
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.CLASSES);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.CLASSES);
+    sheet.appendRow(['class_id', 'class_name', 'grade', 'academic_year', 'teacher_name']);
+    formatHeader(sheet);
+  }
+
+  const data = sheet.getDataRange().getValues();
+  let targetRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === classId) {
+      targetRow = i + 1;
+      break;
+    }
+  }
+
+  if (targetRow > 0) {
+    sheet.getRange(targetRow, 1, 1, 5).setValues([[classId, rawName, grade, year, teacherName]]);
+  } else {
+    sheet.appendRow([classId, rawName, grade, year, teacherName]);
+  }
+
+  ensureTeacherAccount(classId, rawName, teacherName);
+  ensureGroupLeaders(classId);
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đã lưu lớp ${rawName} thành công!`,
+    class: { id: classId, name: rawName, grade: grade, year: year, teacherName: teacherName }
+  });
+}
+
+/**
+ * 13. XÓA 1 LỚP HỌC
+ */
+function handleDeleteClass(payload) {
+  const classId = payload.classId;
+  if (!classId) {
+    return createJsonResponse({ status: 'error', message: 'Thiếu mã lớp cần xóa!' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.CLASSES);
+  if (!sheet) {
+    return createJsonResponse({ status: 'error', message: 'Không tìm thấy bảng Lớp học!' });
+  }
+
+  const data = sheet.getDataRange().getValues();
+  let deleted = false;
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][0]) === classId) {
+      sheet.deleteRow(i + 1);
+      deleted = true;
+      break;
+    }
+  }
+
+  return createJsonResponse({
+    status: deleted ? 'success' : 'error',
+    message: deleted ? 'Đã xóa lớp học thành công!' : 'Không tìm thấy lớp học cần xóa!'
+  });
+}
+
+/**
+ * Tự động đoán khối từ tên lớp (ví dụ: '6A1' -> 'Khối 6', '8A6' -> 'Khối 8', '10A2' -> 'Khối 10')
+ */
+function inferGradeFromName(name) {
+  const m = String(name || '').match(/(\d+)/);
+  if (m) {
+    return `Khối ${m[1]}`;
+  }
+  return 'Khối 6';
+}
+
 
 /**
  * HÀM TIỆN ÍCH TRỢ GIÚP
