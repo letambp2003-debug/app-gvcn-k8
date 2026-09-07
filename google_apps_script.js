@@ -202,7 +202,8 @@ function handleLogin(payload) {
     const refreshedData = sheet.getDataRange().getValues();
     for (let i = 1; i < refreshedData.length; i++) {
       const row = refreshedData[i];
-      const p = String(row[1]).trim();
+      let p = String(row[1] || '').trim();
+      if (p.startsWith("'")) p = p.slice(1);
       const fullname = String(row[2]);
       const role = String(row[3]);
       const assignedClass = String(row[4]);
@@ -235,8 +236,9 @@ function handleLogin(payload) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const u = String(row[0]).trim().toLowerCase();
-    const p = String(row[1]).trim();
+    const u = String(row[0] || '').trim().toLowerCase();
+    let p = String(row[1] || '').trim();
+    if (p.startsWith("'")) p = p.slice(1);
     const fullname = String(row[2]);
     const role = String(row[3]);
     const assignedClass = String(row[4]);
@@ -702,7 +704,8 @@ function handleGetGroupPins(payload) {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const username = String(row[0]);
-    const pin = String(row[1]);
+    let pin = String(row[1] || '').trim();
+    if (pin.startsWith("'")) pin = pin.slice(1);
     const fullname = String(row[2]);
     const role = String(row[3]);
     const assignedClass = String(row[4]);
@@ -759,7 +762,7 @@ function handleUpdateGroupPins(payload) {
 
     if (role === 'group_leader' && assignedClass === classId && updateMap[assignedGroup]) {
       const newPin = updateMap[assignedGroup];
-      sheet.getRange(i + 1, 2).setValue("'" + newPin);
+      sheet.getRange(i + 1, 2).setNumberFormat('@').setValue(String(newPin));
       count++;
     }
   }
@@ -796,7 +799,7 @@ function ensureGroupLeaders(classId) {
     if (!existingGroups.has(grp)) {
       const tNum = idx + 1;
       const u = `totruong_${cleanClassSuffix}_t${tNum}`;
-      rowsToAdd.push([u, "'1234", `Tổ Trưởng ${grp} (${cleanClassSuffix.toUpperCase()})`, 'group_leader', classId, grp, 'active']);
+      rowsToAdd.push([u, '1234', `Tổ Trưởng ${grp} (${cleanClassSuffix.toUpperCase()})`, 'group_leader', classId, grp, 'active']);
     }
   });
 
@@ -970,7 +973,8 @@ function ensureTeacherAccount(classId, className, teacherName) {
     }
   } else {
     // Tạo tài khoản mới: username, password, fullname, role, assigned_class, assigned_group, status
-    sheet.appendRow([username, "'123456", defaultDisplayName, 'teacher', classId, '*', 'active']);
+    sheet.appendRow([username, '123456', defaultDisplayName, 'teacher', classId, '*', 'active']);
+    sheet.getRange(sheet.getLastRow(), 2).setNumberFormat('@');
   }
 }
 
@@ -1140,11 +1144,12 @@ function handleSaveAccount(payload) {
     sheet.getRange(foundRow, 6).setValue(assignedGroup);
     sheet.getRange(foundRow, 7).setValue(status);
     if (password) {
-      sheet.getRange(foundRow, 2).setValue("'" + password);
+      sheet.getRange(foundRow, 2).setNumberFormat('@').setValue(String(password));
     }
   } else {
     if (!password) password = '123456';
-    sheet.appendRow([username, "'" + password, fullname, role, assignedClass, assignedGroup, status]);
+    sheet.appendRow([username, String(password), fullname, role, assignedClass, assignedGroup, status]);
+    sheet.getRange(sheet.getLastRow(), 2).setNumberFormat('@');
   }
 
   return createJsonResponse({
@@ -1175,7 +1180,7 @@ function handleUpdateTeacherPassword(payload) {
   let updated = false;
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim().toLowerCase() === username) {
-      sheet.getRange(i + 1, 2).setValue("'" + newPassword);
+      sheet.getRange(i + 1, 2).setNumberFormat('@').setValue(String(newPassword));
       updated = true;
       break;
     }
