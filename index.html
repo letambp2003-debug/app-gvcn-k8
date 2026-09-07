@@ -462,9 +462,14 @@ let state=loadState();
 let chartRefs=[]; let mainModal; let countdownInterval=null; let countdown={total:300,left:300,running:false}; let quietInterval=null; let quietLeft=0; let micCtx=null,micStream=null,micRAF=null;
 function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const normalized=normalizeState(JSON.parse(raw)),upgraded=applySchoolProfileMigration(applyOfficialRosterMigration(normalized));try{localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded))}catch(e){}return upgraded}catch(e){console.warn('Không đọc được dữ liệu đã lưu',e);return defaultState()}}
 const DEFAULT_ACCOUNTS = [
-  { username: 'admin', password: 'admin123', fullname: 'Ban Giám Hiệu', role: 'admin', assignedClass: '*' },
-  { username: 'gv_8a6', password: '123456', fullname: 'Lê Tâm (GVCN 8A6)', role: 'teacher', assignedClass: 'class_8a6' },
-  { username: 'gv_8a1', password: '123456', fullname: 'Nguyễn Văn A (GVCN 8A1)', role: 'teacher', assignedClass: 'class_8a1' }
+  { username: 'admin', password: 'admin123', fullname: 'Ban Giám Hiệu', role: 'admin', assignedClass: '*', assignedGroup: '*' },
+  { username: 'gv_8a6', password: '123456', fullname: 'Lê Tâm (GVCN 8A6)', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*' },
+  { username: 'gv_8a1', password: '123456', fullname: 'Nguyễn Văn A (GVCN 8A1)', role: 'teacher', assignedClass: 'class_8a1', assignedGroup: '*' },
+  // Tài khoản Tổ Trưởng mẫu cục bộ (PIN mặc định: 1234)
+  { username: 'totruong_8a6_t1', pin: '1234', fullname: 'Tổ Trưởng Tổ 1 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 1' },
+  { username: 'totruong_8a6_t2', pin: '1234', fullname: 'Tổ Trưởng Tổ 2 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 2' },
+  { username: 'totruong_8a6_t3', pin: '1234', fullname: 'Tổ Trưởng Tổ 3 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 3' },
+  { username: 'totruong_8a6_t4', pin: '1234', fullname: 'Tổ Trưởng Tổ 4 (8A6)', role: 'group_leader', assignedClass: 'class_8a6', assignedGroup: 'Tổ 4' }
 ];
 let currentUser = loadUserSession();
 function loadUserSession(){
@@ -472,7 +477,7 @@ function loadUserSession(){
     const raw = sessionStorage.getItem('gvcn_user_session') || localStorage.getItem('gvcn_user_session');
     if(raw) return JSON.parse(raw);
   }catch(e){}
-  return { username: 'gv_8a6', fullname: 'Lê Tâm', role: 'teacher', assignedClass: 'class_8a6' };
+  return { username: 'gv_8a6', fullname: 'Lê Tâm', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*' };
 }
 function saveUserSession(user){
   currentUser = user;
@@ -480,35 +485,92 @@ function saveUserSession(user){
   localStorage.setItem('gvcn_user_session', JSON.stringify(user));
 }
 function showLoginModal(){
-  showModal('Đăng nhập Hệ thống Quản trị Toàn trường', `
-    <form onsubmit="handleLoginSubmit(event)">
-      <div class="text-center mb-3">
-        <div class="brand-logo mx-auto mb-2" style="width:54px; height:54px; font-size:1.3rem">THCS</div>
-        <h5 class="fw-bold m-0">THCS Quang Trung · Quản Trị Lớp Học</h5>
-        <div class="text-muted small mt-1">Đăng nhập tài khoản được cấp để vào đúng lớp chủ nhiệm</div>
+  const classesList = state.classes && state.classes.length ? state.classes : [{ id: 'class_8a6', name: '8A6' }, { id: 'class_8a1', name: '8A1' }];
+  const classOptions = classesList.map(c => `<option value="${c.id}" ${c.id === state.activeClassId ? 'selected' : ''}>Lớp ${esc(c.name)}</option>`).join('');
+
+  showModal('Hệ Thống Đăng Nhập Toàn Trường', `
+    <div class="text-center mb-3">
+      <div class="brand-logo mx-auto mb-2" style="width:52px; height:52px; font-size:1.25rem">THCS</div>
+      <h5 class="fw-bold m-0">THCS Quang Trung · Cổng Phân Quyền</h5>
+      <div class="text-muted small mt-1">Đăng nhập đúng vai trò: Giáo viên hoặc Tổ Trưởng để thao tác</div>
+    </div>
+
+    <ul class="nav nav-pills nav-fill mb-3" id="loginTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold" id="teacher-tab" data-bs-toggle="pill" data-bs-target="#tab-teacher" type="button" role="tab">
+          <i class="fa-solid fa-chalkboard-user me-1"></i>Giáo viên / Admin
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="pin-tab" data-bs-toggle="pill" data-bs-target="#tab-pin" type="button" role="tab">
+          <i class="fa-solid fa-key me-1"></i>Tổ Trưởng (Mã PIN)
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="loginTabsContent">
+      <!-- TAB 1: GIÁO VIÊN / ADMIN -->
+      <div class="tab-pane fade show active" id="tab-teacher" role="tabpanel">
+        <form onsubmit="handleLoginSubmit(event)">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Tên đăng nhập *</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+              <input id="loginUsername" class="form-control" required placeholder="admin hoặc gv_8a6" value="${esc(currentUser?.role !== 'group_leader' ? (currentUser?.username || 'gv_8a6') : 'gv_8a6')}">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Mật khẩu *</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+              <input id="loginPassword" type="password" class="form-control" required placeholder="Mật khẩu" value="123456">
+            </div>
+          </div>
+          <div class="alert alert-light border small py-2">
+            <b>Tài khoản mẫu:</b><br>
+            • Admin: <code>admin</code> / pass: <code>admin123</code> (Toàn quyền các lớp)<br>
+            • GVCN 8A6: <code>gv_8a6</code> / pass: <code>123456</code> (Quản lý lớp 8A6)<br>
+            • GVCN 8A1: <code>gv_8a1</code> / pass: <code>123456</code> (Quản lý lớp 8A1)
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập Giáo viên</button>
+        </form>
       </div>
-      <div class="mb-3">
-        <label class="form-label fw-bold">Tên đăng nhập *</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-          <input id="loginUsername" class="form-control" required placeholder="admin hoặc gv_8a6" value="${esc(currentUser?.username||'gv_8a6')}">
-        </div>
+
+      <!-- TAB 2: TỔ TRƯỞNG (ĐĂNG NHẬP MÃ PIN 4 SỐ) -->
+      <div class="tab-pane fade" id="tab-pin" role="tabpanel">
+        <form onsubmit="handlePinLoginSubmit(event)">
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Chọn Lớp *</label>
+              <select id="pinLoginClass" class="form-select" required>
+                ${classOptions}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Chọn Tổ *</label>
+              <select id="pinLoginGroup" class="form-select" required>
+                <option value="Tổ 1" selected>Tổ 1</option>
+                <option value="Tổ 2">Tổ 2</option>
+                <option value="Tổ 3">Tổ 3</option>
+                <option value="Tổ 4">Tổ 4</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Mã PIN 4 số của Tổ trưởng *</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+              <input id="pinLoginPin" type="password" maxlength="6" class="form-control font-monospace text-center fs-5 fw-bold" required placeholder="1234" value="1234">
+            </div>
+            <div class="form-text text-muted text-center mt-1"><i class="fa-solid fa-circle-info me-1"></i>Mã PIN mặc định ban đầu là <b>1234</b> hoặc do GVCN cung cấp.</div>
+          </div>
+          <div class="alert alert-warning small py-2 mb-3">
+            <i class="fa-solid fa-shield-halved me-1"></i><b>Quyền hạn Tổ Trưởng:</b> Chỉ được xem và chấm điểm các bạn trong tổ của mình; không xem được CCCD và dữ liệu cá nhân nhạy cảm.
+          </div>
+          <button type="submit" class="btn btn-success w-100 py-2 fw-bold"><i class="fa-solid fa-key me-1"></i>Đăng nhập Tổ Trưởng</button>
+        </form>
       </div>
-      <div class="mb-3">
-        <label class="form-label fw-bold">Mật khẩu *</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-          <input id="loginPassword" type="password" class="form-control" required placeholder="Mật khẩu" value="123456">
-        </div>
-      </div>
-      <div class="alert alert-light border small py-2">
-        <b>Tài khoản mẫu:</b><br>
-        • Quản trị viên: <code>admin</code> / pass: <code>admin123</code> (Xem và quản lý tất cả các lớp)<br>
-        • GVCN 8A6: <code>gv_8a6</code> / pass: <code>123456</code> (Chỉ quản lý lớp 8A6)<br>
-        • GVCN 8A1: <code>gv_8a1</code> / pass: <code>123456</code> (Chỉ quản lý lớp 8A1)
-      </div>
-      <button type="submit" class="btn btn-primary w-100 py-2 fw-bold"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập</button>
-    </form>
+    </div>
   `);
 }
 async function handleLoginSubmit(e){
@@ -521,7 +583,7 @@ async function handleLoginSubmit(e){
       saveUserSession(res.user);
       applyUserPermissions();
       mainModal.hide();
-      toast('Đăng nhập thành công qua Cloud Google Sheets!');
+      toast('Đăng nhập thành công: ' + res.user.fullname);
       pullClassDataFromCloud(false);
       return;
     } else if(res && res.status === 'error'){
@@ -538,9 +600,58 @@ async function handleLoginSubmit(e){
     Swal.fire({ icon: 'error', title: 'Sai thông tin', text: 'Tên đăng nhập hoặc mật khẩu không chính xác.' });
   }
 }
+async function handlePinLoginSubmit(e){
+  e.preventDefault();
+  const classId = document.getElementById('pinLoginClass').value;
+  const group = document.getElementById('pinLoginGroup').value;
+  const pin = document.getElementById('pinLoginPin').value.trim();
+
+  if(state.settings?.gasApiUrl){
+    const res = await callGasApi('login', {
+      isPinLogin: true,
+      targetClass: classId,
+      targetGroup: group,
+      pin: pin
+    });
+    if(res && res.status === 'success' && res.user){
+      saveUserSession(res.user);
+      applyUserPermissions();
+      mainModal.hide();
+      toast(`Đăng nhập thành công: ${res.user.fullname}!`);
+      pullClassDataFromCloud(false);
+      return;
+    } else if(res && res.status === 'error'){
+      return Swal.fire({ icon: 'error', title: 'Mã PIN không đúng', text: res.message });
+    }
+  }
+
+  // Fallback offline nếu chưa cấu hình Cloud hoặc mất mạng
+  const acc = DEFAULT_ACCOUNTS.find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group && (a.pin === pin || a.password === pin));
+  if(acc){
+    saveUserSession(acc);
+    applyUserPermissions();
+    mainModal.hide();
+    toast(`Đăng nhập Tổ trưởng: ${acc.fullname}!`);
+  } else {
+    Swal.fire({
+      icon: 'error',
+      title: 'Mã PIN không chính xác',
+      text: `Mã PIN không đúng cho ${group} của lớp đang chọn. Vui lòng thử 1234 hoặc liên hệ GVCN.`
+    });
+  }
+}
 function applyUserPermissions(){
   if(!currentUser) return;
-  if(currentUser.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*'){
+  if(currentUser.role === 'group_leader'){
+    if(currentUser.assignedClass && currentUser.assignedClass !== '*'){
+      state.activeClassId = currentUser.assignedClass;
+    }
+    // Nếu trang hiện tại là trang admin nhạy cảm, tự động chuyển về trang chấm điểm thi đua
+    const allowedPages = ['home', 'competition', 'timetable', 'rewards'];
+    if(!allowedPages.includes(state.currentPage)){
+      state.currentPage = 'competition';
+    }
+  } else if(currentUser.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*'){
     const found = state.classes.find(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
     if(found){
       state.activeClassId = found.id;
@@ -572,10 +683,18 @@ async function callGasApi(action, payload = {}){
   if(!url) return null;
   try {
     updateSyncStatus('syncing');
+    const fullPayload = {
+      action,
+      role: currentUser?.role || '',
+      username: currentUser?.username || '',
+      token: currentUser?.token || '',
+      assignedGroup: currentUser?.assignedGroup || '',
+      ...payload
+    };
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, ...payload })
+      body: JSON.stringify(fullPayload)
     });
     const json = await res.json();
     updateSyncStatus('synced');
@@ -610,13 +729,38 @@ function renderAvatar(person,cls=''){const avatar=safeAvatar(person?.avatar);ret
 function toast(title,icon='success'){Swal.fire({toast:true,position:'top-end',icon,title,showConfirmButton:false,timer:1600,timerProgressBar:true})}
 function beep(freq=660,dur=.18,vol=.12){try{const ac=new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=freq;o.connect(g);g.connect(ac.destination);g.gain.value=vol;o.start();setTimeout(()=>{o.stop();ac.close()},dur*1000)}catch(e){}}
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
-function buildNav(){const n=classStudents().length;document.getElementById('sideNav').innerHTML=NAV.map(([id,ic,label,b])=>`<a class="nav-link ${state.currentPage===id?'active':''}" data-page="${id}" onclick="navigate('${id}')"><i class="fa-solid ${ic}"></i><span>${label}</span>${b==='count'?`<span class="mini-badge new">${n}</span>`:b?`<span class="mini-badge ${b==='NEW'?'new':''}">${b}</span>`:''}</a>`).join('')}
+function buildNav(){
+  const n=classStudents().length;
+  let navItems = NAV;
+  if(currentUser?.role === 'group_leader'){
+    const allowed = ['home', 'competition', 'timetable', 'rewards'];
+    navItems = NAV.filter(([id]) => allowed.includes(id));
+  }
+  document.getElementById('sideNav').innerHTML=navItems.map(([id,ic,label,b])=>{
+    let displayLabel = label;
+    if(currentUser?.role === 'group_leader' && id === 'competition'){
+      displayLabel = 'Chấm điểm tổ';
+    }
+    return `<a class="nav-link ${state.currentPage===id?'active':''}" data-page="${id}" onclick="navigate('${id}')"><i class="fa-solid ${ic}"></i><span>${displayLabel}</span>${b==='count'?`<span class="mini-badge new">${n}</span>`:b?`<span class="mini-badge ${b==='NEW'?'new':''}">${b}</span>`:''}</a>`;
+  }).join('');
+}
 function renderHeader(){
   const [t,s]=PAGE_META[state.currentPage]||PAGE_META.home;
-  document.getElementById('pageTitle').textContent=t;
-  document.getElementById('pageSubtitle').textContent=s;
+  let displayTitle = t;
+  let displaySubtitle = s;
+  if(currentUser?.role === 'group_leader' && state.currentPage === 'competition'){
+    displayTitle = `Chấm điểm Nề nếp · ${currentUser.assignedGroup}`;
+    displaySubtitle = `Tổ trưởng theo dõi và chấm điểm các bạn trong ${currentUser.assignedGroup} — Bản ghi sẽ gửi đến GVCN phê duyệt.`;
+  }
+  document.getElementById('pageTitle').textContent=displayTitle;
+  document.getElementById('pageSubtitle').textContent=displaySubtitle;
   const cs = document.getElementById('classSwitcher');
-  if(currentUser && currentUser.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*'){
+  if(currentUser?.role === 'group_leader'){
+    const cls = activeClass();
+    cs.innerHTML = `<option value="${cls.id}" selected>🔒 ${esc(cls.name)} (${esc(currentUser.assignedGroup)})</option>`;
+    cs.disabled = true;
+    cs.title = 'Tài khoản Tổ trưởng cố định theo lớp';
+  } else if(currentUser && currentUser.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*'){
     const assigned = state.classes.filter(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
     const displayList = assigned.length ? assigned : [state.classes[0]];
     cs.innerHTML = displayList.map(c => `<option value="${c.id}" selected>🔒 ${esc(c.name)} (Lớp chủ nhiệm)</option>`).join('');
@@ -627,12 +771,30 @@ function renderHeader(){
     cs.innerHTML = state.classes.map(c=>`<option value="${c.id}" ${c.id===state.activeClassId?'selected':''}>${esc(c.name)} · ${classStudentsFor(c.id).length} HS</option>`).join('');
     cs.title = 'Chuyển đổi lớp học (Quyền Quản trị viên)';
   }
+
+  let roleBadge = 'Giáo viên';
+  if(currentUser?.role === 'admin') roleBadge = 'Quản trị viên trường';
+  else if(currentUser?.role === 'group_leader') roleBadge = `Tổ Trưởng · ${currentUser.assignedGroup}`;
+  else if(currentUser?.role === 'teacher') roleBadge = 'GVCN ' + activeClass().name;
+
   document.getElementById('teacherNameMini').textContent = currentUser?.fullname || state.teacher.name;
-  document.getElementById('teacherRoleMini').textContent = currentUser?.role === 'admin' ? 'Quản trị viên trường' : (currentUser ? 'GVCN ' + activeClass().name : state.teacher.role);
-  document.getElementById('teacherAvatarMini').outerHTML = renderAvatar(state.teacher,'avatar').replace('class="avatar"','class="avatar" id="teacherAvatarMini"');
+  document.getElementById('teacherRoleMini').textContent = roleBadge;
+  document.getElementById('teacherAvatarMini').outerHTML = renderAvatar({ name: currentUser?.fullname || state.teacher.name, avatar: currentUser?.avatar || state.teacher.avatar },'avatar').replace('class="avatar"','class="avatar" id="teacherAvatarMini"');
 }
 function classStudentsFor(id){return state.students.filter(s=>s.classId===id)}
-function navigate(page){if(state.currentPage==='noise'&&page!=='noise') stopMic(); state.currentPage=page;saveState(false);buildNav();renderHeader();renderPage();document.getElementById('sidebar').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})}
+function navigate(page){
+  if(currentUser?.role === 'group_leader' && !['home', 'competition', 'timetable', 'rewards'].includes(page)){
+    return toast('Tổ trưởng không có quyền truy cập mục này', 'warning');
+  }
+  if(state.currentPage==='noise'&&page!=='noise') stopMic();
+  state.currentPage=page;
+  saveState(false);
+  buildNav();
+  renderHeader();
+  renderPage();
+  document.getElementById('sidebar').classList.remove('open');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 function switchClass(id){state.activeClassId=id;state.wheelExcluded=[];state.filmExcluded=[];saveState();buildNav();renderHeader();renderPage()}
 function renderPage(){chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});chartRefs=[];const root=document.getElementById('appContent');root.classList.remove('fade-in');void root.offsetWidth;root.classList.add('fade-in');const fn={home:renderHome,classes:renderClasses,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;root.innerHTML=fn(); setTimeout(afterRender,0)}
 function afterRender(){if(state.currentPage==='home')drawHomeChart();if(state.currentPage==='stats')drawStatsCharts();if(state.currentPage==='competition')drawCompetitionChart();if(state.currentPage==='wheel')positionWheelBalls();if(state.currentPage==='countdown')updateCountdownUI()}
@@ -1092,28 +1254,573 @@ function setCompetitionWeek(v){state.competition.activeWeek=weekStartDate(v);sav
 function moveCompetitionWeek(n){state.competition.activeWeek=addDays(weekStartDate(state.competition.activeWeek),n*7);saveState(false);renderPage()}
 function criterionById(id){return state.competition.criteria.find(c=>c.id===id)}
 function defaultEventDateForWeek(ws){const start=weekStartDate(ws),end=weekEndDate(ws),t=today();return t>=start&&t<=end?t:start}
-function renderCompetition(){const ws=weekStartDate(state.competition.activeWeek||today()),we=weekEndDate(ws),closed=weekClosed(ws),rows=competitionRows(ws),groups=competitionGroups(ws),events=competitionEvents(ws),avg=rows.length?rows.reduce((a,r)=>a+r.total,0)/rows.length:state.competition.baseScore,plus=events.filter(e=>e.points>0).reduce((a,e)=>a+e.points,0),minus=events.filter(e=>e.points<0).reduce((a,e)=>a+e.points,0),att=rows.reduce((a,r)=>a+r.attendance,0),snap=weekSnapshot(ws),criteriaGroups={};state.competition.criteria.forEach(c=>(criteriaGroups[c.category]||(criteriaGroups[c.category]=[])).push(c));return `<div class="section-head"><div><h2><i class="fa-solid fa-trophy text-primary me-2"></i>Thi đua tuần · ${esc(activeClass().name)}</h2><p>Mỗi học sinh bắt đầu <b>${state.competition.baseScore} điểm</b>; nề nếp và điểm danh được cộng/trừ trực tiếp vào cùng báo cáo.</p></div><div class="competition-toolbar"><button class="btn btn-outline-primary" onclick="moveCompetitionWeek(-1)"><i class="fa-solid fa-chevron-left"></i></button><input type="date" class="form-control" style="width:160px" value="${ws}" onchange="setCompetitionWeek(this.value)"><button class="btn btn-outline-primary" onclick="moveCompetitionWeek(1)"><i class="fa-solid fa-chevron-right"></i></button><button class="btn btn-outline-primary" onclick="openGroupAssignment()"><i class="fa-solid fa-people-group me-1"></i>Phân tổ</button><button class="btn btn-outline-primary" onclick="openCompetitionSettings()"><i class="fa-solid fa-sliders me-1"></i>Cấu hình</button></div></div><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><span class="week-chip"><i class="fa-solid fa-calendar-week"></i>${weekLabel(ws)}</span><div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-success" onclick="exportCompetitionXlsx()"><i class="fa-solid fa-file-excel me-1"></i>Excel tuần</button><button class="btn btn-outline-danger" onclick="exportCompetitionPDF()"><i class="fa-solid fa-file-pdf me-1"></i>PDF tuần</button>${closed?`<button class="btn btn-warning" onclick="reopenCompetitionWeek()"><i class="fa-solid fa-lock-open me-1"></i>Mở lại tuần</button>`:`<button class="btn btn-primary" onclick="closeCompetitionWeek()"><i class="fa-solid fa-lock me-1"></i>Chốt tuần</button>`}</div></div>${closed?`<div class="week-closed mb-3"><i class="fa-solid fa-lock me-1"></i>Tuần đã chốt lúc ${new Date(snap.closedAt).toLocaleString('vi-VN')}. Báo cáo dùng số liệu snapshot; muốn sửa hãy “Mở lại tuần”.</div>`:''}<div id="competitionReport"><div class="stats-grid mb-3"><div class="stat-card"><div class="label">Điểm gốc/HS</div><div class="value">${state.competition.baseScore}</div><small>Mốc đầu mỗi tuần</small><i class="fa-solid fa-flag-checkered"></i></div><div class="stat-card"><div class="label">Điểm TB lớp</div><div class="value">${avg.toFixed(1)}</div><small>${rows.length} học sinh</small><i class="fa-solid fa-chart-line"></i></div><div class="stat-card"><div class="label">Nề nếp thủ công</div><div class="value">${plus>=0?'+':''}${plus+minus}</div><small>+${plus} / ${minus} điểm</small><i class="fa-solid fa-plus-minus"></i></div><div class="stat-card"><div class="label">Ảnh hưởng chuyên cần</div><div class="value">${att>=0?'+':''}${att}</div><small>Tính tự động từ điểm danh</small><i class="fa-solid fa-user-check"></i></div></div><div class="grid-2"><div class="card p-3"><h5 class="fw-bold">Xếp hạng cá nhân</h5><div class="table-responsive"><table class="table competition-table"><thead><tr><th>#</th><th>Học sinh</th><th>Tổ</th><th>Gốc</th><th>+</th><th>−</th><th>Điểm danh</th><th>Tổng</th><th>Xếp loại</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td><b>${i+1}</b></td><td><b>${esc(r.name)}</b></td><td>${esc(r.group)}</td><td>${r.base}</td><td class="text-success fw-bold">+${r.positive}</td><td class="text-danger fw-bold">${r.negative}</td><td class="${r.attendance<0?'text-danger':'text-muted'} fw-bold">${r.attendance>=0?'+':''}${r.attendance}</td><td><span class="score-badge">${r.total.toFixed(1)}</span></td><td><span class="rating-pill ${ratingClass(r.rating)}">${esc(r.rating)}</span></td></tr>`).join('')}</tbody></table></div></div><div><div class="card p-3"><h5 class="fw-bold">Xếp hạng theo tổ</h5>${groups.map((g,i)=>`<div class="group-rank"><div class="rank-no">${i+1}</div><div><b>${esc(g.name)}</b><div class="small text-muted">${g.count} học sinh</div></div><span class="score-badge">${g.average.toFixed(1)}</span></div>`).join('')||'<div class="empty">Chưa có dữ liệu tổ</div>'}</div><div class="card p-3 mt-3"><h5 class="fw-bold">Biểu đồ điểm tuần</h5><div style="height:280px"><canvas id="competitionChart"></canvas></div></div></div></div></div>${closed?'':`<div class="card p-3 mt-3"><div class="d-flex justify-content-between flex-wrap gap-2"><div><h5 class="fw-bold mb-1">Ghi nhận nề nếp nhanh</h5><div class="competition-note">Chọn học sinh + ngày + tiêu chí. Một lần bấm tạo đúng một bản ghi thi đua.</div></div><div class="d-flex gap-2 flex-wrap"><select id="competitionStudent" class="form-select" style="min-width:230px">${classStudents().map(st=>`<option value="${st.id}">${esc(st.name)}</option>`).join('')}</select><input id="competitionDate" type="date" class="form-control" style="width:160px" min="${ws}" max="${we}" value="${defaultEventDateForWeek(ws)}"><input id="competitionNote" class="form-control" style="min-width:220px" placeholder="Ghi chú (không bắt buộc)"></div></div>${Object.entries(criteriaGroups).map(([cat,list])=>`<div class="criterion-section"><div class="criterion-title">${esc(cat)}</div><div class="criterion-grid">${list.map(c=>`<button class="criterion-btn ${c.points>=0?'positive':'negative'}" onclick="addCompetitionEvent('${c.id}')"><span>${esc(c.icon)}</span><span>${esc(c.label)}</span><span class="criterion-points ${c.points>=0?'text-success':'text-danger'}">${c.points>=0?'+':''}${c.points}</span></button>`).join('')}</div></div>`).join('')}</div>`}<div class="card p-3 mt-3"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><h5 class="fw-bold m-0">Nhật ký nề nếp tuần (${events.length})</h5><span class="small text-muted">Điểm danh không lặp ở đây vì được tính trực tiếp từ dữ liệu chuyên cần.</span></div><div class="table-responsive"><table class="table mt-2"><thead><tr><th>Ngày</th><th>Học sinh</th><th>Nhóm</th><th>Nội dung</th><th>Điểm</th><th>Ghi chú</th>${closed?'':'<th></th>'}</tr></thead><tbody>${events.sort((a,b)=>b.time.localeCompare(a.time)).map(e=>`<tr><td>${dateObjLocal(e.date).toLocaleDateString('vi-VN')}</td><td><b>${esc(e.studentName)}</b></td><td>${esc(e.category)}</td><td>${esc(e.label)}</td><td><span class="score-badge ${e.points>=0?'score-plus':'score-minus'}">${e.points>=0?'+':''}${e.points}</span></td><td>${esc(e.note||'')}</td>${closed?'':`<td><button class="icon-btn text-danger" onclick="deleteCompetitionEvent('${e.id}')"><i class="fa-solid fa-trash"></i></button></td>`}</tr>`).join('')||`<tr><td colspan="7" class="text-center text-muted py-4">Chưa có ghi nhận nề nếp trong tuần này.</td></tr>`}</tbody></table></div></div>`}
+function renderCompetition(){
+  const ws = weekStartDate(state.competition.activeWeek || today());
+  const we = weekEndDate(ws);
+  const closed = weekClosed(ws);
+  const rows = competitionRows(ws);
+  const groups = competitionGroups(ws);
+  const events = competitionEvents(ws);
+  const avg = rows.length ? rows.reduce((a,r) => a + r.total, 0) / rows.length : state.competition.baseScore;
+  const plus = events.filter(e => e.points > 0).reduce((a,e) => a + e.points, 0);
+  const minus = events.filter(e => e.points < 0).reduce((a,e) => a + e.points, 0);
+  const att = rows.reduce((a,r) => a + r.attendance, 0);
+  const snap = weekSnapshot(ws);
+  const criteriaGroups = {};
+  state.competition.criteria.forEach(c => (criteriaGroups[c.category] || (criteriaGroups[c.category] = [])).push(c));
+
+  const isGroupLeader = currentUser?.role === 'group_leader';
+  const myGroup = currentUser?.assignedGroup || 'Tổ 1';
+  const isTeacherOrAdmin = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
+
+  // Lọc học sinh cho danh sách chọn chấm điểm
+  let targetStudents = classStudents();
+  if (isGroupLeader) {
+    const assignedMembers = targetStudents.filter(st => state.competition.groupAssignments?.[st.id] === myGroup);
+    if (assignedMembers.length) targetStudents = assignedMembers;
+  }
+
+  // Danh sách chờ duyệt
+  const allPending = (state.competition.pendingEvents || []).filter(e => e.classId === state.activeClassId);
+  const myPending = allPending.filter(e => isGroupLeader ? (e.submittedBy === currentUser.username || !e.submittedBy) : true);
+
+  return `
+    <div class="section-head">
+      <div>
+        <h2>
+          <i class="fa-solid fa-trophy text-primary me-2"></i>
+          ${isGroupLeader ? `Chấm điểm Nề nếp · ${esc(myGroup)} (${esc(activeClass().name)})` : `Thi đua tuần · ${esc(activeClass().name)}`}
+        </h2>
+        <p>
+          ${isGroupLeader 
+            ? `Tổ trưởng chỉ ghi nhận học sinh thuộc <b>${esc(myGroup)}</b>. Điểm sẽ được chuyển đến GVCN duyệt trước khi tính chính thức.` 
+            : `Mỗi học sinh bắt đầu <b>${state.competition.baseScore} điểm</b>; nề nếp và điểm danh được cộng/trừ trực tiếp vào cùng báo cáo.`
+          }
+        </p>
+      </div>
+      <div class="competition-toolbar">
+        <button class="btn btn-outline-primary" onclick="moveCompetitionWeek(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+        <input type="date" class="form-control" style="width:160px" value="${ws}" onchange="setCompetitionWeek(this.value)">
+        <button class="btn btn-outline-primary" onclick="moveCompetitionWeek(1)"><i class="fa-solid fa-chevron-right"></i></button>
+        ${!isGroupLeader ? `
+          <button class="btn btn-outline-primary" onclick="openGroupPinsModal()"><i class="fa-solid fa-key me-1"></i>PIN Tổ Trưởng</button>
+          <button class="btn btn-outline-primary" onclick="openGroupAssignment()"><i class="fa-solid fa-people-group me-1"></i>Phân tổ</button>
+          <button class="btn btn-outline-primary" onclick="openCompetitionSettings()"><i class="fa-solid fa-sliders me-1"></i>Cấu hình</button>
+        ` : `
+          <span class="badge px-3 py-2 fs-6 text-white" style="background:#0d9488"><i class="fa-solid fa-user-check me-1"></i>${esc(myGroup)}</span>
+        `}
+      </div>
+    </div>
+
+    <!-- KHỐI PHÊ DUYỆT DÀNH CHO GVCN / ADMIN KHI CÓ BẢN GHI CHỜ DUYỆT -->
+    ${isTeacherOrAdmin && allPending.length > 0 ? `
+      <div class="card border-warning mb-3 p-3" style="background:#fffbeb; border-left: 5px solid #f59e0b !important;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+          <div>
+            <h5 class="fw-bold text-warning-emphasis m-0">
+              <i class="fa-solid fa-bell me-2 text-warning"></i>Ghi nhận nề nếp chờ phê duyệt (${allPending.length})
+            </h5>
+            <small class="text-muted">Các bản ghi do Tổ trưởng chấm cần GVCN xác nhận trước khi cộng/trừ vào điểm thi đua tuần.</small>
+          </div>
+          <button class="btn btn-success btn-sm fw-bold px-3" onclick="approveAllCompetitionEvents()">
+            <i class="fa-solid fa-check-double me-1"></i>Duyệt tất cả (${allPending.length})
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0 bg-white rounded border">
+            <thead class="table-light">
+              <tr>
+                <th>Thời gian</th>
+                <th>Học sinh</th>
+                <th>Người gửi / Tổ</th>
+                <th>Tiêu chí</th>
+                <th>Điểm</th>
+                <th>Ghi chú</th>
+                <th class="text-end">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allPending.map(e => `
+                <tr>
+                  <td>${dateObjLocal(e.date).toLocaleDateString('vi-VN')}</td>
+                  <td><b>${esc(e.studentName)}</b></td>
+                  <td><span class="badge bg-secondary">${esc(e.submittedBy || 'Tổ trưởng')}</span></td>
+                  <td>${esc(e.label)}</td>
+                  <td><span class="score-badge ${e.points >= 0 ? 'score-plus' : 'score-minus'}">${e.points >= 0 ? '+' : ''}${e.points}</span></td>
+                  <td class="small text-muted">${esc(e.note || '')}</td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-success py-1 px-2 me-1" onclick="approveCompetitionEvent('${e.id}')" title="Chấp nhận điểm này"><i class="fa-solid fa-check me-1"></i>Duyệt</button>
+                    <button class="btn btn-sm btn-outline-danger py-1 px-2" onclick="rejectCompetitionEvent('${e.id}')" title="Hủy bỏ ghi nhận"><i class="fa-solid fa-xmark me-1"></i>Bác bỏ</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- KHỐI TRẠNG THÁI CHỜ DUYỆT DÀNH CHO TỔ TRƯỞNG -->
+    ${isGroupLeader && myPending.length > 0 ? `
+      <div class="card border-info mb-3 p-3" style="background:#f0f9ff; border-left: 5px solid #0284c7 !important;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold text-info-emphasis m-0">
+            <i class="fa-solid fa-hourglass-half me-2 text-info"></i>Ghi nhận của ${esc(myGroup)} đang chờ GVCN duyệt (${myPending.length})
+          </h6>
+          <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>Chờ GVCN xem xét</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 bg-white rounded border">
+            <thead class="table-light">
+              <tr>
+                <th>Ngày</th>
+                <th>Học sinh</th>
+                <th>Nội dung</th>
+                <th>Điểm</th>
+                <th>Ghi chú</th>
+                <th class="text-end">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${myPending.map(e => `
+                <tr>
+                  <td>${dateObjLocal(e.date).toLocaleDateString('vi-VN')}</td>
+                  <td><b>${esc(e.studentName)}</b></td>
+                  <td>${esc(e.label)}</td>
+                  <td><span class="score-badge ${e.points >= 0 ? 'score-plus' : 'score-minus'}">${e.points >= 0 ? '+' : ''}${e.points}</span></td>
+                  <td class="small text-muted">${esc(e.note || '')}</td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteCompetitionEvent('${e.id}', true)"><i class="fa-solid fa-rotate-left me-1"></i>Rút lại</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <span class="week-chip"><i class="fa-solid fa-calendar-week"></i>${weekLabel(ws)}</span>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-success" onclick="exportCompetitionXlsx()"><i class="fa-solid fa-file-excel me-1"></i>Excel tuần</button>
+        <button class="btn btn-outline-danger" onclick="exportCompetitionPDF()"><i class="fa-solid fa-file-pdf me-1"></i>PDF tuần</button>
+        ${!isGroupLeader ? (closed ? `<button class="btn btn-warning" onclick="reopenCompetitionWeek()"><i class="fa-solid fa-lock-open me-1"></i>Mở lại tuần</button>` : `<button class="btn btn-primary" onclick="closeCompetitionWeek()"><i class="fa-solid fa-lock me-1"></i>Chốt tuần</button>`) : ''}
+      </div>
+    </div>
+
+    ${closed ? `<div class="week-closed mb-3"><i class="fa-solid fa-lock me-1"></i>Tuần đã chốt lúc ${new Date(snap.closedAt).toLocaleString('vi-VN')}. Báo cáo dùng số liệu snapshot; muốn sửa hãy “Mở lại tuần”.</div>` : ''}
+
+    <div id="competitionReport">
+      <div class="stats-grid mb-3">
+        <div class="stat-card">
+          <div class="label">Điểm gốc/HS</div>
+          <div class="value">${state.competition.baseScore}</div>
+          <small>Mốc đầu mỗi tuần</small>
+          <i class="fa-solid fa-flag-checkered"></i>
+        </div>
+        <div class="stat-card">
+          <div class="label">Điểm TB lớp</div>
+          <div class="value">${avg.toFixed(1)}</div>
+          <small>${rows.length} học sinh</small>
+          <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <div class="stat-card">
+          <div class="label">Nề nếp thủ công</div>
+          <div class="value">${plus >= 0 ? '+' : ''}${plus + minus}</div>
+          <small>+${plus} / ${minus} điểm</small>
+          <i class="fa-solid fa-plus-minus"></i>
+        </div>
+        <div class="stat-card">
+          <div class="label">Ảnh hưởng chuyên cần</div>
+          <div class="value">${att >= 0 ? '+' : ''}${att}</div>
+          <small>Tính tự động từ điểm danh</small>
+          <i class="fa-solid fa-user-check"></i>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card p-3">
+          <h5 class="fw-bold">${isGroupLeader ? `Xếp hạng thi đua lớp (${rows.length} HS)` : 'Xếp hạng cá nhân'}</h5>
+          <div class="table-responsive">
+            <table class="table competition-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Học sinh</th>
+                  <th>Tổ</th>
+                  <th>Gốc</th>
+                  <th>+</th>
+                  <th>−</th>
+                  <th>Điểm danh</th>
+                  <th>Tổng</th>
+                  <th>Xếp loại</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((r, i) => `
+                  <tr class="${isGroupLeader && r.group === myGroup ? 'table-warning fw-bold' : ''}">
+                    <td><b>${i + 1}</b></td>
+                    <td><b>${esc(r.name)}</b></td>
+                    <td>${esc(r.group)}</td>
+                    <td>${r.base}</td>
+                    <td class="text-success fw-bold">+${r.positive}</td>
+                    <td class="text-danger fw-bold">${r.negative}</td>
+                    <td class="${r.attendance < 0 ? 'text-danger' : 'text-muted'} fw-bold">${r.attendance >= 0 ? '+' : ''}${r.attendance}</td>
+                    <td><span class="score-badge">${r.total.toFixed(1)}</span></td>
+                    <td><span class="rating-pill ${ratingClass(r.rating)}">${esc(r.rating)}</span></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <div class="card p-3">
+            <h5 class="fw-bold">Xếp hạng theo tổ</h5>
+            ${groups.map((g, i) => `
+              <div class="group-rank ${isGroupLeader && g.name === myGroup ? 'border-primary border-2 bg-light' : ''}">
+                <div class="rank-no">${i + 1}</div>
+                <div>
+                  <b>${esc(g.name)} ${isGroupLeader && g.name === myGroup ? '<span class="badge bg-primary ms-1">Tổ bạn</span>' : ''}</b>
+                  <div class="small text-muted">${g.count} học sinh</div>
+                </div>
+                <span class="score-badge">${g.average.toFixed(1)}</span>
+              </div>
+            `).join('') || '<div class="empty">Chưa có dữ liệu tổ</div>'}
+          </div>
+          <div class="card p-3 mt-3">
+            <h5 class="fw-bold">Biểu đồ điểm tuần</h5>
+            <div style="height:280px"><canvas id="competitionChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${closed ? '' : `
+      <div class="card p-3 mt-3">
+        <div class="d-flex justify-content-between flex-wrap gap-2">
+          <div>
+            <h5 class="fw-bold mb-1">${isGroupLeader ? `Chấm điểm nề nếp cho thành viên ${esc(myGroup)}` : 'Ghi nhận nề nếp nhanh'}</h5>
+            <div class="competition-note">${isGroupLeader ? 'Chọn học sinh trong tổ của bạn + tiêu chí để ghi nhận. Bản ghi sẽ ở trạng thái chờ GVCN duyệt.' : 'Chọn học sinh + ngày + tiêu chí. Một lần bấm tạo đúng một bản ghi thi đua.'}</div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <select id="competitionStudent" class="form-select" style="min-width:230px">
+              ${targetStudents.map(st => `<option value="${st.id}">${esc(st.name)}</option>`).join('')}
+            </select>
+            <input id="competitionDate" type="date" class="form-control" style="width:160px" min="${ws}" max="${we}" value="${defaultEventDateForWeek(ws)}">
+            <input id="competitionNote" class="form-control" style="min-width:220px" placeholder="Ghi chú (không bắt buộc)">
+          </div>
+        </div>
+        ${Object.entries(criteriaGroups).map(([cat, list]) => `
+          <div class="criterion-section">
+            <div class="criterion-title">${esc(cat)}</div>
+            <div class="criterion-grid">
+              ${list.map(c => `
+                <button class="criterion-btn ${c.points >= 0 ? 'positive' : 'negative'}" onclick="addCompetitionEvent('${c.id}')">
+                  <span>${esc(c.icon)}</span>
+                  <span>${esc(c.label)}</span>
+                  <span class="criterion-points ${c.points >= 0 ? 'text-success' : 'text-danger'}">${c.points >= 0 ? '+' : ''}${c.points}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `}
+
+    <div class="card p-3 mt-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="fw-bold m-0">Nhật ký nề nếp đã duyệt tuần (${events.length})</h5>
+        <span class="small text-muted">Điểm danh không lặp ở đây vì được tính trực tiếp từ dữ liệu chuyên cần.</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table mt-2">
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>Học sinh</th>
+              <th>Nhóm</th>
+              <th>Nội dung</th>
+              <th>Điểm</th>
+              <th>Ghi chú</th>
+              ${closed || isGroupLeader ? '' : '<th></th>'}
+            </tr>
+          </thead>
+          <tbody>
+            ${events.sort((a, b) => b.time.localeCompare(a.time)).map(e => `
+              <tr>
+                <td>${dateObjLocal(e.date).toLocaleDateString('vi-VN')}</td>
+                <td><b>${esc(e.studentName)}</b></td>
+                <td>${esc(e.category)}</td>
+                <td>${esc(e.label)}</td>
+                <td><span class="score-badge ${e.points >= 0 ? 'score-plus' : 'score-minus'}">${e.points >= 0 ? '+' : ''}${e.points}</span></td>
+                <td>${esc(e.note || '')}</td>
+                ${closed || isGroupLeader ? '' : `<td><button class="icon-btn text-danger" onclick="deleteCompetitionEvent('${e.id}')"><i class="fa-solid fa-trash"></i></button></td>`}
+              </tr>
+            `).join('') || `<tr><td colspan="7" class="text-center text-muted py-4">Chưa có ghi nhận nề nếp trong tuần này.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function addCompetitionEvent(criterionId){
-  if(weekClosed())return toast('Tuần đã chốt','warning');
-  const c=criterionById(criterionId),sid=document.getElementById('competitionStudent')?.value,st=state.students.find(x=>x.id===sid),date=document.getElementById('competitionDate')?.value||defaultEventDateForWeek(state.competition.activeWeek),note=document.getElementById('competitionNote')?.value.trim()||'';
-  if(!c||!st)return toast('Thiếu học sinh hoặc tiêu chí','warning');
-  if(weekStartDate(date)!==weekStartDate(state.competition.activeWeek))return toast('Ngày ghi nhận không thuộc tuần đang chọn','warning');
-  const ev = {id:uid('ce'),classId:state.activeClassId,studentId:st.id,studentName:st.name,date,weekStart:weekStartDate(date),criterionId:c.id,category:c.category,label:c.label,points:c.points,note,source:'manual',time:new Date().toISOString()};
-  state.competition.events.unshift(ev);
-  saveState(false);
-  renderPage();
-  toast(`${st.name}: ${c.points>=0?'+':''}${c.points} điểm`);
+  if(weekClosed()) return toast('Tuần đã chốt','warning');
+  const c = criterionById(criterionId);
+  const sid = document.getElementById('competitionStudent')?.value;
+  const st = state.students.find(x => x.id === sid);
+  const date = document.getElementById('competitionDate')?.value || defaultEventDateForWeek(state.competition.activeWeek);
+  const note = document.getElementById('competitionNote')?.value.trim() || '';
+  if(!c || !st) return toast('Thiếu học sinh hoặc tiêu chí','warning');
+  if(weekStartDate(date) !== weekStartDate(state.competition.activeWeek)) return toast('Ngày ghi nhận không thuộc tuần đang chọn','warning');
+
+  const isGroupLeader = currentUser?.role === 'group_leader';
+  const eventStatus = isGroupLeader ? 'pending' : 'approved';
+  const submittedBy = currentUser?.username || (isGroupLeader ? 'totruong' : 'gv');
+
+  const ev = {
+    id: uid('ce'),
+    classId: state.activeClassId,
+    studentId: st.id,
+    studentName: st.name,
+    date,
+    weekStart: weekStartDate(date),
+    criterionId: c.id,
+    category: c.category,
+    label: c.label,
+    points: c.points,
+    note,
+    source: isGroupLeader ? 'group_leader' : 'manual',
+    status: eventStatus,
+    submittedBy: submittedBy,
+    time: new Date().toISOString()
+  };
+
+  if(isGroupLeader){
+    state.competition.pendingEvents = state.competition.pendingEvents || [];
+    state.competition.pendingEvents.unshift(ev);
+    saveState(false);
+    renderPage();
+    Swal.fire({
+      icon: 'success',
+      title: 'Đã gửi ghi nhận điểm!',
+      html: `Đã chấm điểm cho <b>${esc(st.name)}</b>: <b class="${c.points >= 0 ? 'text-success' : 'text-danger'}">${c.points >= 0 ? '+' : ''}${c.points} điểm</b>.<br><span class="badge bg-warning text-dark mt-2"><i class="fa-solid fa-hourglass-half me-1"></i>Đang chờ GVCN phê duyệt</span>`,
+      timer: 2500,
+      showConfirmButton: false
+    });
+  } else {
+    state.competition.events.unshift(ev);
+    saveState(false);
+    renderPage();
+    toast(`${st.name}: ${c.points >= 0 ? '+' : ''}${c.points} điểm`);
+  }
+
   callGasApi('save_competition_event', { event: ev });
 }
-async function deleteCompetitionEvent(id){
-  if(weekClosed())return;
-  const e=state.competition.events.find(x=>x.id===id);
-  const r=await Swal.fire({icon:'warning',title:'Xóa ghi nhận thi đua?',text:e?`${e.studentName}: ${e.label}`:'',showCancelButton:true,confirmButtonText:'Xóa',confirmButtonColor:'#dc2626'});
-  if(!r.isConfirmed)return;
-  state.competition.events=state.competition.events.filter(x=>x.id!==id);
+
+async function deleteCompetitionEvent(id, isPending = false){
+  if(weekClosed() && !isPending) return;
+
+  if(isPending){
+    const e = (state.competition.pendingEvents || []).find(x => x.id === id);
+    const r = await Swal.fire({
+      icon: 'warning',
+      title: 'Rút lại ghi nhận này?',
+      text: e ? `${e.studentName}: ${e.label}` : '',
+      showCancelButton: true,
+      confirmButtonText: 'Rút lại',
+      confirmButtonColor: '#dc2626'
+    });
+    if(!r.isConfirmed) return;
+    state.competition.pendingEvents = (state.competition.pendingEvents || []).filter(x => x.id !== id);
+    saveState(false);
+    renderPage();
+    toast('Đã rút lại ghi nhận');
+    callGasApi('delete_competition_event', { id });
+    return;
+  }
+
+  const e = state.competition.events.find(x => x.id === id);
+  const r = await Swal.fire({
+    icon: 'warning',
+    title: 'Xóa ghi nhận thi đua?',
+    text: e ? `${e.studentName}: ${e.label}` : '',
+    showCancelButton: true,
+    confirmButtonText: 'Xóa',
+    confirmButtonColor: '#dc2626'
+  });
+  if(!r.isConfirmed) return;
+  state.competition.events = state.competition.events.filter(x => x.id !== id);
   saveState();
   renderPage();
   callGasApi('delete_competition_event', { id });
+}
+
+async function approveCompetitionEvent(id){
+  state.competition.pendingEvents = state.competition.pendingEvents || [];
+  const idx = state.competition.pendingEvents.findIndex(x => x.id === id);
+  if(idx === -1) return;
+  const ev = state.competition.pendingEvents.splice(idx, 1)[0];
+  ev.status = 'approved';
+  state.competition.events.unshift(ev);
+  saveState(false);
+  renderPage();
+  toast(`Đã duyệt ghi nhận: ${ev.studentName} (${ev.points >= 0 ? '+' : ''}${ev.points}đ)`);
+  callGasApi('approve_competition_events', { eventIds: [id], decision: 'approve' });
+}
+
+async function rejectCompetitionEvent(id){
+  const r = await Swal.fire({
+    icon: 'warning',
+    title: 'Bác bỏ ghi nhận này?',
+    text: 'Bản ghi do Tổ trưởng chấm sẽ bị hủy bỏ.',
+    showCancelButton: true,
+    confirmButtonText: 'Bác bỏ',
+    confirmButtonColor: '#dc2626'
+  });
+  if(!r.isConfirmed) return;
+  state.competition.pendingEvents = state.competition.pendingEvents || [];
+  state.competition.pendingEvents = state.competition.pendingEvents.filter(x => x.id !== id);
+  saveState(false);
+  renderPage();
+  toast('Đã bác bỏ bản ghi');
+  callGasApi('approve_competition_events', { eventIds: [id], decision: 'reject' });
+}
+
+async function approveAllCompetitionEvents(){
+  state.competition.pendingEvents = state.competition.pendingEvents || [];
+  const classPending = state.competition.pendingEvents.filter(e => e.classId === state.activeClassId);
+  if(!classPending.length) return toast('Không có bản ghi nào chờ duyệt', 'info');
+
+  const r = await Swal.fire({
+    icon: 'question',
+    title: `Phê duyệt tất cả ${classPending.length} bản ghi?`,
+    text: 'Toàn bộ điểm nề nếp do các Tổ trưởng chấm sẽ được cộng/trừ chính thức vào bảng thi đua lớp.',
+    showCancelButton: true,
+    confirmButtonText: 'Duyệt tất cả',
+    confirmButtonColor: '#16a34a'
+  });
+  if(!r.isConfirmed) return;
+
+  const ids = classPending.map(e => e.id);
+  classPending.forEach(ev => {
+    ev.status = 'approved';
+    state.competition.events.unshift(ev);
+  });
+  state.competition.pendingEvents = state.competition.pendingEvents.filter(e => e.classId !== state.activeClassId);
+
+  saveState(false);
+  renderPage();
+  toast(`Đã duyệt thành công ${ids.length} bản ghi!`);
+  callGasApi('approve_competition_events', { eventIds: ids, decision: 'approve' });
+}
+
+async function openGroupPinsModal(){
+  Swal.fire({
+    title: 'Đang tải thông tin PIN...',
+    allowOutsideClick: false,
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  const cleanSuffix = state.activeClassId.replace(/^class_/, '').toLowerCase();
+  let pins = [
+    { group: 'Tổ 1', pin: '1234', username: `totruong_${cleanSuffix}_t1` },
+    { group: 'Tổ 2', pin: '1234', username: `totruong_${cleanSuffix}_t2` },
+    { group: 'Tổ 3', pin: '1234', username: `totruong_${cleanSuffix}_t3` },
+    { group: 'Tổ 4', pin: '1234', username: `totruong_${cleanSuffix}_t4` }
+  ];
+
+  if(state.settings?.gasApiUrl){
+    const res = await callGasApi('get_group_pins', { classId: state.activeClassId });
+    if(res && res.status === 'success' && Array.isArray(res.pins) && res.pins.length){
+      pins = res.pins;
+    }
+  }
+  Swal.close();
+
+  showModal(`🔑 Quản Lý Mã PIN Tổ Trưởng · Lớp ${esc(activeClass().name)}`, `
+    <form onsubmit="saveGroupPins(event)">
+      <div class="alert alert-info small mb-3">
+        <i class="fa-solid fa-shield-halved me-1"></i>
+        Mã PIN giúp Tổ trưởng 4 tổ đăng nhập nhanh trên điện thoại hoặc máy tính mà không cần nhớ tài khoản phức tạp. GVCN có thể xem hoặc đổi mã PIN cho từng tổ bất cứ lúc nào.
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Tổ</th>
+              <th>Tài khoản hệ thống</th>
+              <th style="width:160px">Mã PIN (4 số)</th>
+              <th class="text-end">Thao tác nhanh</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pins.map(p => `
+              <tr>
+                <td><b><i class="fa-solid fa-people-group text-primary me-2"></i>${esc(p.group)}</b></td>
+                <td><code class="text-muted">${esc(p.username)}</code></td>
+                <td>
+                  <input id="pin_${esc(p.group.replace(/\\s+/g,'_'))}" type="text" maxlength="6" class="form-control font-monospace text-center fw-bold pin-input" data-group="${esc(p.group)}" value="${esc(p.pin || '1234')}" required>
+                </td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('pin_${esc(p.group.replace(/\\s+/g,'_'))}').value='1234'">Đặt lại 1234</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+        <button type="button" class="btn btn-outline-warning btn-sm" onclick="resetAllPinsTo1234()">
+          <i class="fa-solid fa-rotate-left me-1"></i>Đặt tất cả về 1234
+        </button>
+        <button type="submit" class="btn btn-primary fw-bold">
+          <i class="fa-solid fa-floppy-disk me-1"></i>Lưu thay đổi Mã PIN
+        </button>
+      </div>
+    </form>
+  `);
+}
+
+function resetAllPinsTo1234(){
+  document.querySelectorAll('.pin-input').forEach(el => el.value = '1234');
+}
+
+async function saveGroupPins(e){
+  e.preventDefault();
+  const updates = [];
+  document.querySelectorAll('.pin-input').forEach(el => {
+    const grp = el.dataset.group;
+    const pin = el.value.trim();
+    if(grp && pin) updates.push({ group: grp, pin: pin });
+  });
+
+  // Cập nhật DEFAULT_ACCOUNTS cục bộ
+  updates.forEach(u => {
+    const acc = DEFAULT_ACCOUNTS.find(a => a.assignedClass === state.activeClassId && a.assignedGroup === u.group);
+    if(acc) acc.pin = u.pin;
+  });
+
+  mainModal.hide();
+  toast('Đang lưu mã PIN...');
+
+  const res = await callGasApi('update_group_pins', {
+    classId: state.activeClassId,
+    updates: updates
+  });
+
+  if(res && res.status === 'success'){
+    Swal.fire({
+      icon: 'success',
+      title: 'Đã cập nhật mã PIN!',
+      text: res.message || 'Mã PIN của các tổ trưởng đã được lưu thành công trên Google Sheets.'
+    });
+  } else {
+    toast('Đã lưu mã PIN cục bộ', 'info');
+  }
 }
 function drawCompetitionChart(){const ctx=document.getElementById('competitionChart');if(!ctx)return;const rows=competitionRows().slice(0,15);chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(20,184,166,.72)',borderRadius:7}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{suggestedMin:60}}}}))}
 async function closeCompetitionWeek(){if(weekClosed())return;const ws=weekStartDate(state.competition.activeWeek),rows=liveCompetitionRows(ws),groups=liveCompetitionGroups(ws);const unmarked=[];for(let i=0;i<5;i++){const date=addDays(ws,i),row=state.attendance[state.activeClassId+'_'+date]||{};classStudents().forEach(st=>{if(!row[st.id]||row[st.id]==='unmarked')unmarked.push(`${date}: ${st.name}`)})}const r=await Swal.fire({icon:unmarked.length?'warning':'question',title:'Chốt thi đua tuần?',html:`<div class="text-start">Tuần <b>${weekLabel(ws)}</b><br>Điểm TB lớp: <b>${rows.length?(rows.reduce((a,x)=>a+x.total,0)/rows.length).toFixed(1):state.competition.baseScore}</b>${unmarked.length?`<br><span class="text-danger">Còn ${unmarked.length} lượt chưa điểm danh. Có thể chốt nhưng các lượt này tính 0 điểm chuyên cần.</span>`:''}<br><small>Sau khi chốt, báo cáo dùng snapshot cố định.</small></div>`,showCancelButton:true,confirmButtonText:'Chốt tuần'});if(!r.isConfirmed)return;const key=competitionSnapshotKey(ws);state.competition.snapshots[key]={classId:state.activeClassId,weekStart:ws,weekEnd:weekEndDate(ws),closedAt:new Date().toISOString(),rows:JSON.parse(JSON.stringify(rows)),groups:JSON.parse(JSON.stringify(groups)),baseScore:state.competition.baseScore,attendanceRules:{...state.competition.attendanceRules}};saveState();renderPage();toast('Đã chốt thi đua tuần')}
@@ -1423,10 +2130,14 @@ async function pullClassDataFromCloud(interactive = true){
       didOpen: () => { Swal.showLoading(); }
     });
   }
-  const res = await callGasApi('get_class_data', { classId: state.activeClassId });
+  const res = await callGasApi('get_class_data', {
+    classId: state.activeClassId,
+    role: currentUser?.role || '',
+    assignedGroup: currentUser?.assignedGroup || ''
+  });
   if(res && res.status === 'success'){
     let hasChanges = false;
-    if(Array.isArray(res.students) && res.students.length > 0){
+    if(Array.isArray(res.students)){
       res.students.forEach(st => {
         if(st.cccd && st.cccd.length > 0 && st.cccd.length < 12 && /^\d+$/.test(st.cccd)){
           st.cccd = st.cccd.padStart(12, '0');
@@ -1439,12 +2150,19 @@ async function pullClassDataFromCloud(interactive = true){
       Object.assign(state.attendance, res.attendance);
       hasChanges = true;
     }
-    if(Array.isArray(res.events) && res.events.length > 0){
+    if(Array.isArray(res.events)){
       state.competition.events = state.competition.events.filter(e => e.classId !== state.activeClassId).concat(res.events);
       hasChanges = true;
     }
+    if(Array.isArray(res.pendingEvents)){
+      state.competition.pendingEvents = res.pendingEvents;
+      hasChanges = true;
+    } else {
+      state.competition.pendingEvents = state.competition.pendingEvents || [];
+    }
     if(res.configs && typeof res.configs === 'object'){
       if(res.configs.seating) state.seating[state.activeClassId] = res.configs.seating;
+      if(res.configs.groupAssignments) state.competition.groupAssignments = res.configs.groupAssignments;
     }
     if(hasChanges){
       saveState(false);
@@ -1456,7 +2174,7 @@ async function pullClassDataFromCloud(interactive = true){
       Swal.fire({
         icon: 'success',
         title: 'Đã đồng bộ từ Google Sheets',
-        html: `<div class="text-start">Dữ liệu lớp <b>${esc(activeClass().name)}</b> đã được cập nhật thành công!<br>• Sĩ số: <b>${classStudents().length}</b> học sinh<br>• Ghi nhận thi đua: <b>${res.events ? res.events.length : 0}</b> lượt</div>`
+        html: `<div class="text-start">Dữ liệu lớp <b>${esc(activeClass().name)}</b> đã được cập nhật thành công!<br>• Sĩ số: <b>${classStudents().length}</b> học sinh<br>• Ghi nhận thi đua: <b>${res.events ? res.events.length : 0}</b> lượt<br>• Bản ghi chờ duyệt: <b>${res.pendingEvents ? res.pendingEvents.length : 0}</b> lượt</div>`
       });
     }
   } else {

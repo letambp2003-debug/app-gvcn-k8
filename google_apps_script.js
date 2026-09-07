@@ -35,15 +35,20 @@ const SHEETS = {
 function initialSetup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // 1. Sheet Tài Khoản
+  // 1. Sheet Tài Khoản (Bổ sung assigned_group cho Tổ Trưởng)
   let userSheet = ss.getSheetByName(SHEETS.USERS);
   if (!userSheet) {
     userSheet = ss.insertSheet(SHEETS.USERS);
-    userSheet.appendRow(['username', 'password', 'fullname', 'role', 'assigned_class', 'status']);
+    userSheet.appendRow(['username', 'password', 'fullname', 'role', 'assigned_class', 'assigned_group', 'status']);
     // Tài khoản Admin mẫu & GVCN mẫu
-    userSheet.appendRow(['admin', 'admin123', 'Ban Giám Hiệu', 'admin', '*', 'active']);
-    userSheet.appendRow(['gv_8a6', '123456', 'Lê Tâm (GVCN 8A6)', 'teacher', 'class_8a6', 'active']);
-    userSheet.appendRow(['gv_8a1', '123456', 'Nguyễn Văn A (GVCN 8A1)', 'teacher', 'class_8a1', 'active']);
+    userSheet.appendRow(['admin', 'admin123', 'Ban Giám Hiệu', 'admin', '*', '*', 'active']);
+    userSheet.appendRow(['gv_8a6', '123456', 'Lê Tâm (GVCN 8A6)', 'teacher', 'class_8a6', '*', 'active']);
+    userSheet.appendRow(['gv_8a1', '123456', 'Nguyễn Văn A (GVCN 8A1)', 'teacher', 'class_8a1', '*', 'active']);
+    // Tài khoản Tổ Trưởng mẫu lớp 8A6 (Mã PIN mặc định: 1234)
+    userSheet.appendRow(['totruong_8a6_t1', '1234', 'Tổ Trưởng Tổ 1 (8A6)', 'group_leader', 'class_8a6', 'Tổ 1', 'active']);
+    userSheet.appendRow(['totruong_8a6_t2', '1234', 'Tổ Trưởng Tổ 2 (8A6)', 'group_leader', 'class_8a6', 'Tổ 2', 'active']);
+    userSheet.appendRow(['totruong_8a6_t3', '1234', 'Tổ Trưởng Tổ 3 (8A6)', 'group_leader', 'class_8a6', 'Tổ 3', 'active']);
+    userSheet.appendRow(['totruong_8a6_t4', '1234', 'Tổ Trưởng Tổ 4 (8A6)', 'group_leader', 'class_8a6', 'Tổ 4', 'active']);
     formatHeader(userSheet);
   }
 
@@ -78,11 +83,11 @@ function initialSetup() {
     formatHeader(attSheet);
   }
 
-  // 5. Sheet Thi Đua Tuần & Nề Nếp
+  // 5. Sheet Thi Đua Tuần & Nề Nếp (Có cột status chờ duyệt và submitted_by)
   let compSheet = ss.getSheetByName(SHEETS.COMPETITION);
   if (!compSheet) {
     compSheet = ss.insertSheet(SHEETS.COMPETITION);
-    compSheet.appendRow(['id', 'class_id', 'date', 'week_start', 'student_id', 'student_name', 'criterion_id', 'category', 'label', 'points', 'note', 'time']);
+    compSheet.appendRow(['id', 'class_id', 'date', 'week_start', 'student_id', 'student_name', 'criterion_id', 'category', 'label', 'points', 'note', 'time', 'status', 'submitted_by']);
     formatHeader(compSheet);
   }
 
@@ -143,6 +148,12 @@ function doPost(e) {
         return handleSaveCompetitionEvent(payload);
       case 'delete_competition_event':
         return handleDeleteCompetitionEvent(payload);
+      case 'approve_competition_events':
+        return handleApproveCompetitionEvents(payload);
+      case 'get_group_pins':
+        return handleGetGroupPins(payload);
+      case 'update_group_pins':
+        return handleUpdateGroupPins(payload);
       case 'save_config':
         return handleSaveConfig(payload);
       case 'get_all_classes':
@@ -156,18 +167,56 @@ function doPost(e) {
 }
 
 /**
- * 1. XỬ LÝ ĐĂNG NHẬP
+ * 1. XỬ LÝ ĐĂNG NHẬP (HỖ TRỢ ADMIN, GVCN & TỔ TRƯỞNG BẰNG MÃ PIN)
  */
 function handleLogin(payload) {
+  const isPin = !!payload.isPinLogin;
   const username = String(payload.username || '').trim().toLowerCase();
-  const password = String(payload.password || '').trim();
+  const password = String(payload.password || payload.pin || '').trim();
+  const targetClass = String(payload.targetClass || payload.classId || '').trim();
+  const targetGroup = String(payload.targetGroup || '').trim();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEETS.USERS);
+  let sheet = ss.getSheetByName(SHEETS.USERS);
   if (!sheet) return createJsonResponse({ status: 'error', message: 'Chưa khởi tạo bảng tài khoản.' });
 
+  // 1.1 Nếu là đăng nhập bằng mã PIN dành cho Tổ Trưởng
+  if (isPin) {
+    if (targetClass) ensureGroupLeaders(targetClass);
+    const refreshedData = sheet.getDataRange().getValues();
+    for (let i = 1; i < refreshedData.length; i++) {
+      const row = refreshedData[i];
+      const p = String(row[1]).trim();
+      const fullname = String(row[2]);
+      const role = String(row[3]);
+      const assignedClass = String(row[4]);
+      const assignedGroup = String(row[5] || '');
+      const status = String(row[6] || row[5]);
+
+      if (role === 'group_leader' && assignedClass === targetClass && assignedGroup === targetGroup && p === password) {
+        if (status === 'locked') {
+          return createJsonResponse({ status: 'error', message: 'Tài khoản tổ trưởng đang bị khóa.' });
+        }
+        const token = Utilities.base64Encode('pin:' + row[0] + ':' + Date.now());
+        return createJsonResponse({
+          status: 'success',
+          message: 'Đăng nhập Tổ trưởng thành công!',
+          user: {
+            username: String(row[0]),
+            fullname: fullname,
+            role: 'group_leader',
+            assignedClass: assignedClass,
+            assignedGroup: assignedGroup,
+            token: token
+          }
+        });
+      }
+    }
+    return createJsonResponse({ status: 'error', message: 'Mã PIN không chính xác cho ' + targetGroup + ' (' + targetClass + ').' });
+  }
+
+  // 1.2 Đăng nhập chuẩn (Username & Password) cho Admin, GVCN, hoặc Tổ Trưởng
   const data = sheet.getDataRange().getValues();
-  // Bỏ dòng tiêu đề
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const u = String(row[0]).trim().toLowerCase();
@@ -175,14 +224,14 @@ function handleLogin(payload) {
     const fullname = String(row[2]);
     const role = String(row[3]);
     const assignedClass = String(row[4]);
-    const status = String(row[5]);
+    const assignedGroup = String(row[5] || '*');
+    const status = String(row[6] || row[5]);
 
     if (u === username && p === password) {
-      if (status !== 'active') {
+      if (status === 'locked') {
         return createJsonResponse({ status: 'error', message: 'Tài khoản này đang bị khóa. Vui lòng liên hệ Admin.' });
       }
 
-      // Tạo token session đơn giản
       const token = Utilities.base64Encode(username + ':' + Date.now());
 
       return createJsonResponse({
@@ -193,6 +242,7 @@ function handleLogin(payload) {
           fullname: fullname,
           role: role,
           assignedClass: assignedClass,
+          assignedGroup: assignedGroup,
           token: token
         }
       });
@@ -203,84 +253,17 @@ function handleLogin(payload) {
 }
 
 /**
- * 2. LẤY DỮ LIỆU CỦA LỚP ĐƯỢC PHÂN CÔNG
+ * 2. LẤY DỮ LIỆU CỦA LỚP ĐƯỢC PHÂN CÔNG (LỌC BẢO MẬT THEO VAI TRÒ)
  */
 function handleGetClassData(payload) {
   const classId = payload.classId;
+  const userRole = String(payload.role || '');
+  const assignedGroup = String(payload.assignedGroup || '');
   if (!classId) return createJsonResponse({ status: 'error', message: 'Thiếu classId' });
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Đọc học sinh của lớp
-  const studentSheet = ss.getSheetByName(SHEETS.STUDENTS);
-  const students = [];
-  if (studentSheet && studentSheet.getLastRow() > 1) {
-    const sData = studentSheet.getDataRange().getValues();
-    for (let i = 1; i < sData.length; i++) {
-      const r = sData[i];
-      if (String(r[1]) === classId) {
-        students.push({
-          id: String(r[0]),
-          classId: String(r[1]),
-          stt: Number(r[2]) || 0,
-          name: String(r[3]),
-          dob: formatDobString(r[4]),
-          gender: String(r[5]),
-          cccd: formatCccdString(r[6]),
-          coins: Number(r[7]) || 0,
-          note: String(r[8] || '')
-        });
-      }
-    }
-    // Sắp xếp theo STT
-    students.sort((a, b) => a.stt - b.stt);
-  }
-
-  // Đọc điểm danh của lớp
-  const attSheet = ss.getSheetByName(SHEETS.ATTENDANCE);
-  const attendance = {};
-  if (attSheet && attSheet.getLastRow() > 1) {
-    const aData = attSheet.getDataRange().getValues();
-    for (let i = 1; i < aData.length; i++) {
-      const r = aData[i];
-      if (String(r[1]) === classId) {
-        const dateStr = formatDateStr(r[2]);
-        const sid = String(r[3]);
-        const status = String(r[4]);
-        const key = classId + '_' + dateStr;
-        if (!attendance[key]) attendance[key] = {};
-        attendance[key][sid] = status;
-      }
-    }
-  }
-
-  // Đọc thi đua tuần của lớp
-  const compSheet = ss.getSheetByName(SHEETS.COMPETITION);
-  const events = [];
-  if (compSheet && compSheet.getLastRow() > 1) {
-    const cData = compSheet.getDataRange().getValues();
-    for (let i = 1; i < cData.length; i++) {
-      const r = cData[i];
-      if (String(r[1]) === classId) {
-        events.push({
-          id: String(r[0]),
-          classId: String(r[1]),
-          date: formatDateStr(r[2]),
-          weekStart: formatDateStr(r[3]),
-          studentId: String(r[4]),
-          studentName: String(r[5]),
-          criterionId: String(r[6]),
-          category: String(r[7]),
-          label: String(r[8]),
-          points: Number(r[9]) || 0,
-          note: String(r[10] || ''),
-          time: String(r[11])
-        });
-      }
-    }
-  }
-
-  // Đọc cấu hình lớp (sơ đồ, thời khóa biểu)
+  // Đọc cấu hình lớp trước để lấy phân tổ
   const configSheet = ss.getSheetByName(SHEETS.CONFIG);
   const configs = {};
   if (configSheet && configSheet.getLastRow() > 1) {
@@ -297,12 +280,120 @@ function handleGetClassData(payload) {
     }
   }
 
+  const groupMap = (configs.groupAssignments && typeof configs.groupAssignments === 'object') ? configs.groupAssignments : {};
+
+  // Đọc học sinh của lớp
+  const studentSheet = ss.getSheetByName(SHEETS.STUDENTS);
+  let students = [];
+  if (studentSheet && studentSheet.getLastRow() > 1) {
+    const sData = studentSheet.getDataRange().getValues();
+    for (let i = 1; i < sData.length; i++) {
+      const r = sData[i];
+      if (String(r[1]) === classId) {
+        const sid = String(r[0]);
+        const sGroup = groupMap[sid] || '';
+
+        // BẢO MẬT CẤP MÁY CHỦ CHO TỔ TRƯỞNG:
+        if (userRole === 'group_leader') {
+          if (assignedGroup && sGroup && sGroup !== assignedGroup) {
+            continue; // Không gửi học sinh ngoài tổ
+          }
+          // XÓA BỎ HOÀN TOÀN CCCD VÀ NGÀY SINH TRƯỚC KHI TRẢ VỀ CHO HỌC SINH
+          students.push({
+            id: sid,
+            classId: String(r[1]),
+            stt: Number(r[2]) || 0,
+            name: String(r[3]),
+            dob: '', // SECURED
+            gender: String(r[5]),
+            cccd: '', // SECURED (Không bao giờ lộ số định danh)
+            coins: Number(r[7]) || 0,
+            note: ''
+          });
+        } else {
+          // Ban Giám Hiệu & GVCN nhận đầy đủ
+          students.push({
+            id: sid,
+            classId: String(r[1]),
+            stt: Number(r[2]) || 0,
+            name: String(r[3]),
+            dob: formatDobString(r[4]),
+            gender: String(r[5]),
+            cccd: formatCccdString(r[6]),
+            coins: Number(r[7]) || 0,
+            note: String(r[8] || '')
+          });
+        }
+      }
+    }
+    students.sort((a, b) => a.stt - b.stt);
+  }
+
+  // Đọc điểm danh (Tổ trưởng không cần thông tin chuyên cần nhạy cảm)
+  const attSheet = ss.getSheetByName(SHEETS.ATTENDANCE);
+  const attendance = {};
+  if (userRole !== 'group_leader' && attSheet && attSheet.getLastRow() > 1) {
+    const aData = attSheet.getDataRange().getValues();
+    for (let i = 1; i < aData.length; i++) {
+      const r = aData[i];
+      if (String(r[1]) === classId) {
+        const dateStr = formatDateStr(r[2]);
+        const sid = String(r[3]);
+        const status = String(r[4]);
+        const key = classId + '_' + dateStr;
+        if (!attendance[key]) attendance[key] = {};
+        attendance[key][sid] = status;
+      }
+    }
+  }
+
+  // Đọc thi đua: Tách thành events (đã duyệt) và pendingEvents (chờ GVCN duyệt)
+  const compSheet = ss.getSheetByName(SHEETS.COMPETITION);
+  const events = [];
+  const pendingEvents = [];
+  if (compSheet && compSheet.getLastRow() > 1) {
+    const cData = compSheet.getDataRange().getValues();
+    for (let i = 1; i < cData.length; i++) {
+      const r = cData[i];
+      if (String(r[1]) === classId) {
+        const sid = String(r[4]);
+        const sGroup = groupMap[sid] || '';
+        if (userRole === 'group_leader' && assignedGroup && sGroup && sGroup !== assignedGroup) {
+          continue;
+        }
+        const evStatus = String(r[12] || 'approved');
+        const evObj = {
+          id: String(r[0]),
+          classId: String(r[1]),
+          date: formatDateStr(r[2]),
+          weekStart: formatDateStr(r[3]),
+          studentId: sid,
+          studentName: String(r[5]),
+          criterionId: String(r[6]),
+          category: String(r[7]),
+          label: String(r[8]),
+          points: Number(r[9]) || 0,
+          note: String(r[10] || ''),
+          time: String(r[11]),
+          status: evStatus,
+          submittedBy: String(r[13] || 'gv')
+        };
+        if (evStatus === 'pending') {
+          pendingEvents.push(evObj);
+        } else if (evStatus !== 'rejected') {
+          events.push(evObj);
+        }
+      }
+    }
+  }
+
   return createJsonResponse({
     status: 'success',
     classId: classId,
     students: students,
     attendance: attendance,
     events: events,
+    pendingEvents: pendingEvents,
     configs: configs
   });
 }
@@ -473,7 +564,7 @@ function handleSaveAttendance(payload) {
 }
 
 /**
- * 7. LƯU GHI NHẬN NỀ NẾP THI ĐUA
+ * 7. LƯU GHI NHẬN NỀ NẾP THI ĐUA (HỖ TRỢ TRẠNG THÁI CHỜ DUYỆT TỪ TỔ TRƯỞNG)
  */
 function handleSaveCompetitionEvent(payload) {
   const ev = payload.event;
@@ -482,6 +573,12 @@ function handleSaveCompetitionEvent(payload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.COMPETITION);
   const id = ev.id || ('ce_' + Date.now().toString(36));
+
+  const role = String(payload.role || '');
+  const username = String(payload.username || '');
+  // Nếu là tổ trưởng gửi lên thì mặc định là 'pending' chờ GVCN duyệt, GVCN/Admin tạo thì 'approved' ngay
+  const status = ev.status || (role === 'group_leader' ? 'pending' : 'approved');
+  const submittedBy = ev.submittedBy || username || (role === 'group_leader' ? 'totruong' : 'gv');
 
   sheet.appendRow([
     id,
@@ -495,28 +592,201 @@ function handleSaveCompetitionEvent(payload) {
     ev.label,
     Number(ev.points) || 0,
     ev.note || '',
-    ev.time || new Date().toISOString()
+    ev.time || new Date().toISOString(),
+    status,
+    submittedBy
   ]);
 
-  return createJsonResponse({ status: 'success', message: 'Đã lưu ghi nhận thi đua!', id: id });
+  return createJsonResponse({
+    status: 'success',
+    message: status === 'pending' ? 'Đã gửi ghi nhận điểm, đang chờ GVCN duyệt!' : 'Đã lưu ghi nhận thi đua!',
+    id: id,
+    eventStatus: status
+  });
 }
 
 /**
- * 8. XÓA GHI NHẬN NỀ NẾP THI ĐUA
+ * 8. XÓA GHI NHẬN NỀ NẾP THI ĐUA (KIỂM TRA BẢO MẬT THEO VAI TRÒ)
  */
 function handleDeleteCompetitionEvent(payload) {
   const id = payload.id;
+  const role = String(payload.role || '');
+  const username = String(payload.username || '');
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.COMPETITION);
   const data = sheet.getDataRange().getValues();
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]) === id) {
+      const rowStatus = String(data[i][12] || 'approved');
+      const submittedBy = String(data[i][13] || '');
+      // Nếu là tổ trưởng thì chỉ được rút lại bản ghi do chính tổ mình gửi khi còn ở trạng thái pending
+      if (role === 'group_leader') {
+        if (rowStatus !== 'pending' || (submittedBy && username && submittedBy !== username)) {
+          return createJsonResponse({ status: 'error', message: 'Tổ trưởng chỉ được rút lại bản ghi đang chờ duyệt của chính mình.' });
+        }
+      }
       sheet.deleteRow(i + 1);
       return createJsonResponse({ status: 'success', message: 'Đã xóa ghi nhận thi đua!' });
     }
   }
   return createJsonResponse({ status: 'error', message: 'Không tìm thấy bản ghi cần xóa.' });
+}
+
+/**
+ * 8.1 PHÊ DUYỆT HOẶC TỪ CHỐI GHI NHẬN THI ĐUA TỪ TỔ TRƯỞNG (DÀNH CHO GVCN / ADMIN)
+ */
+function handleApproveCompetitionEvents(payload) {
+  const eventIds = Array.isArray(payload.eventIds) ? payload.eventIds : (payload.id ? [payload.id] : []);
+  const actionType = String(payload.decision || 'approve'); // 'approve' hoặc 'reject'
+  const newStatus = actionType === 'reject' ? 'rejected' : 'approved';
+
+  if (eventIds.length === 0) {
+    return createJsonResponse({ status: 'error', message: 'Chưa chọn bản ghi nào để phê duyệt.' });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.COMPETITION);
+  if (!sheet) return createJsonResponse({ status: 'error', message: 'Không tìm thấy bảng ThiDua.' });
+
+  const data = sheet.getDataRange().getValues();
+  let updatedCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const rowId = String(data[i][0]);
+    if (eventIds.includes(rowId)) {
+      // Cột 13 (index 12): status
+      sheet.getRange(i + 1, 13).setValue(newStatus);
+      updatedCount++;
+    }
+  }
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đã ${newStatus === 'approved' ? 'phê duyệt' : 'từ chối'} ${updatedCount} bản ghi nề nếp!`,
+    updatedCount: updatedCount,
+    newStatus: newStatus
+  });
+}
+
+/**
+ * 8.2 LẤY DANH SÁCH MÃ PIN 4 TỔ TRƯỞNG CỦA LỚP (CHỈ GVCN CỦA LỚP ĐÓ HOẶC ADMIN ĐƯỢC XEM)
+ */
+function handleGetGroupPins(payload) {
+  const classId = payload.classId;
+  if (!classId) return createJsonResponse({ status: 'error', message: 'Thiếu classId' });
+
+  ensureGroupLeaders(classId);
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const data = sheet.getDataRange().getValues();
+
+  const pins = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const username = String(row[0]);
+    const pin = String(row[1]);
+    const fullname = String(row[2]);
+    const role = String(row[3]);
+    const assignedClass = String(row[4]);
+    const assignedGroup = String(row[5] || '');
+    const status = String(row[6] || 'active');
+
+    if (role === 'group_leader' && assignedClass === classId) {
+      pins.push({
+        username: username,
+        group: assignedGroup,
+        pin: pin,
+        fullname: fullname,
+        status: status
+      });
+    }
+  }
+
+  pins.sort((a, b) => a.group.localeCompare(b.group, 'vi'));
+
+  return createJsonResponse({
+    status: 'success',
+    classId: classId,
+    pins: pins
+  });
+}
+
+/**
+ * 8.3 CẬP NHẬT MÃ PIN CHO TỔ TRƯỞNG (GVCN / ADMIN ĐỔI PIN)
+ */
+function handleUpdateGroupPins(payload) {
+  const classId = payload.classId;
+  const updates = payload.updates; // Mảng [{ group: 'Tổ 1', pin: '1234' }, ...] hoặc Object { 'Tổ 1': '1234' }
+  if (!classId || !updates) return createJsonResponse({ status: 'error', message: 'Thiếu thông tin đổi PIN' });
+
+  ensureGroupLeaders(classId);
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.USERS);
+  const data = sheet.getDataRange().getValues();
+
+  const updateMap = {};
+  if (Array.isArray(updates)) {
+    updates.forEach(u => { if (u.group && u.pin) updateMap[u.group] = String(u.pin).trim(); });
+  } else if (typeof updates === 'object') {
+    Object.entries(updates).forEach(([k, v]) => { updateMap[k] = String(v).trim(); });
+  }
+
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const role = String(row[3]);
+    const assignedClass = String(row[4]);
+    const assignedGroup = String(row[5] || '');
+
+    if (role === 'group_leader' && assignedClass === classId && updateMap[assignedGroup]) {
+      const newPin = updateMap[assignedGroup];
+      sheet.getRange(i + 1, 2).setValue("'" + newPin);
+      count++;
+    }
+  }
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đã cập nhật mã PIN cho ${count} tổ trưởng!`,
+    updatedCount: count
+  });
+}
+
+/**
+ * 8.4 ĐẢM BẢO TỰ ĐỘNG TẠO 4 TÀI KHOẢN TỔ TRƯỞNG NẾU LỚP CHƯA CÓ
+ */
+function ensureGroupLeaders(classId) {
+  if (!classId) return;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) return;
+
+  const data = sheet.getDataRange().getValues();
+  const existingGroups = new Set();
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[3]) === 'group_leader' && String(row[4]) === classId) {
+      existingGroups.add(String(row[5] || ''));
+    }
+  }
+
+  const cleanClassSuffix = classId.replace(/^class_/, '').toLowerCase();
+  const rowsToAdd = [];
+  ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'].forEach((grp, idx) => {
+    if (!existingGroups.has(grp)) {
+      const tNum = idx + 1;
+      const u = `totruong_${cleanClassSuffix}_t${tNum}`;
+      rowsToAdd.push([u, "'1234", `Tổ Trưởng ${grp} (${cleanClassSuffix.toUpperCase()})`, 'group_leader', classId, grp, 'active']);
+    }
+  });
+
+  if (rowsToAdd.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAdd.length, rowsToAdd[0].length).setValues(rowsToAdd);
+  }
 }
 
 /**
