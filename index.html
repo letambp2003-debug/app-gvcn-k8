@@ -356,6 +356,7 @@ function today(){const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getF
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function initials(name){return (name||'?').split(/\s+/).filter(Boolean).slice(-2).map(x=>x[0]).join('').toUpperCase()}
 function deskAssignment(val){if(val&&typeof val==='object')return {left:String(val.left||''),right:String(val.right||'')};if(typeof val==='string'&&val)return {left:val,right:''};return {left:'',right:''}}
+function flattenDeskAssignments(assignments){const ids=[];Object.values(assignments||{}).forEach(v=>{const d=deskAssignment(v);if(d.left)ids.push(d.left);if(d.right)ids.push(d.right)});return ids}
 function getClassSession(classId = (state?.activeClassId || '')){
   const c = state?.classes?.find(x => x.id === classId);
   if (c && (c.session === 'morning' || c.session === 'afternoon')) {
@@ -400,6 +401,43 @@ function weekLabel(v){const a=dateObjLocal(weekStartDate(v)),b=dateObjLocal(week
 function defaultCompetition(students=[]){const groups=DEFAULT_GROUPS.slice(),groupAssignments={};students.forEach((st,i)=>groupAssignments[st.id]=groups[i%groups.length]);return {baseScore:100,activeWeek:weekStartDate(today()),attendanceRules:{present:0,late:-1,excused:0,unexcused:-3},groups,groupAssignments,criteria:DEFAULT_COMPETITION_CRITERIA.map(x=>({...x})),events:[],snapshots:{},ratings:[{min:100,label:'Xuất sắc'},{min:90,label:'Tốt'},{min:80,label:'Khá'},{min:65,label:'Đạt'},{min:0,label:'Cần cố gắng'}]}}
 function normalizeCompetition(raw,classes,students){const d=defaultCompetition(students),x=(raw&&typeof raw==='object')?raw:{},classIds=new Set(classes.map(c=>c.id)),studentIds=new Set(students.map(st=>st.id));const groups=Array.isArray(x.groups)&&x.groups.length?x.groups.map(g=>String(g).trim()).filter(Boolean).slice(0,12):d.groups;const groupAssignments={};if(x.groupAssignments&&typeof x.groupAssignments==='object')Object.entries(x.groupAssignments).forEach(([sid,g])=>{if(studentIds.has(sid)&&groups.includes(String(g)))groupAssignments[sid]=String(g)});students.forEach((st,i)=>{if(!groupAssignments[st.id])groupAssignments[st.id]=groups[i%groups.length]||'Tổ 1'});const criteria=Array.isArray(x.criteria)&&x.criteria.length?x.criteria.slice(0,80).map((c,i)=>({id:safeId(c.id||`tc${i}`,'tc'),category:String(c.category||'Khác').slice(0,80),label:String(c.label||'Tiêu chí').slice(0,200),points:Math.max(-20,Math.min(20,finiteNum(c.points,0))),icon:String(c.icon||'•').slice(0,8)})):d.criteria;const events=Array.isArray(x.events)?x.events.filter(e=>classIds.has(String(e?.classId||''))&&studentIds.has(String(e?.studentId||''))).map(e=>{const date=/^\d{4}-\d{2}-\d{2}$/.test(e.date||'')?e.date:today();return {id:safeId(e.id,'ce'),classId:String(e.classId),studentId:String(e.studentId),studentName:String(e.studentName||students.find(st=>st.id===e.studentId)?.name||'').slice(0,120),date,weekStart:weekStartDate(date),criterionId:String(e.criterionId||'custom').slice(0,80),category:String(e.category||'Khác').slice(0,80),label:String(e.label||'Ghi nhận thi đua').slice(0,250),points:Math.max(-20,Math.min(20,finiteNum(e.points,0))),note:String(e.note||'').slice(0,500),source:'manual',time:isNaN(Date.parse(e.time))?new Date().toISOString():new Date(e.time).toISOString()}}):[];const snapshots={};if(x.snapshots&&typeof x.snapshots==='object')Object.entries(x.snapshots).forEach(([k,v])=>{if(v&&classIds.has(String(v.classId||''))&&/^\d{4}-\d{2}-\d{2}$/.test(v.weekStart||''))snapshots[k]=v});const ratings=Array.isArray(x.ratings)&&x.ratings.length?x.ratings.map(r=>({min:finiteNum(r.min,0),label:String(r.label||'').slice(0,60)})).sort((a,b)=>b.min-a.min):d.ratings;return {baseScore:Math.max(0,Math.min(200,finiteNum(x.baseScore,100))),activeWeek:weekStartDate(/^\d{4}-\d{2}-\d{2}$/.test(x.activeWeek||'')?x.activeWeek:today()),attendanceRules:{present:0,late:Math.max(-20,Math.min(20,finiteNum(x.attendanceRules?.late,-1))),excused:Math.max(-20,Math.min(20,finiteNum(x.attendanceRules?.excused,0))),unexcused:Math.max(-20,Math.min(20,finiteNum(x.attendanceRules?.unexcused,-3)))},groups,groupAssignments,criteria,events,snapshots,ratings}}
 
+function seatIndicesForLane(total,lanes,lane){const arr=[];for(let i=lane;i<total;i+=lanes)arr.push(i);return arr}
+
+function defaultSeating(students, clsId, groupAssignments = null){
+  const ss = (students || []).filter(s => s.classId === clsId);
+  const groups = ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'];
+  const ga = groupAssignments || (typeof window !== 'undefined' ? window.state?.competition?.groupAssignments : null);
+  const hasGa = ga && Object.keys(ga).length > 0;
+  const buckets = groups.map((g, gi) => {
+    if (hasGa) {
+      const matched = ss.filter(s => ga[s.id] === g);
+      if (matched.length > 0) return matched;
+    }
+    return ss.filter((s, si) => (si % 4 === gi));
+  });
+  const assigned = new Set(buckets.flat().map(s => s.id));
+  const ungrouped = ss.filter(s => !assigned.has(s.id));
+  if (ungrouped.length) {
+    ungrouped.forEach((s, idx) => buckets[idx % 4].push(s));
+  }
+  const maxSize = Math.max(1, ...buckets.map(b => b.length));
+  const desksPerLane = Math.max(6, Math.ceil(maxSize / 2));
+  const totalDesks = 4 * desksPerLane;
+  const assignments = {};
+  buckets.forEach((members, lane) => {
+    const desks = seatIndicesForLane(totalDesks, 4, lane);
+    let p = 0;
+    desks.forEach(idx => {
+      if (p >= members.length) return;
+      assignments[String(idx)] = {
+        left: members[p++]?.id || '',
+        right: members[p++]?.id || ''
+      };
+    });
+  });
+  return { lanes: 4, seats: Math.max(totalDesks, 24), mode: '2d', assignments };
+}
+
 function normalizeState(raw){
  const d=defaultState(),x=(raw&&typeof raw==='object')?raw:{};
   const classes=Array.isArray(x.classes)&&x.classes.length?x.classes.map((c,i)=>({id:safeId(c?.id,'class'),name:String(c?.name||`Lớp ${i+1}`).slice(0,80),grade:String(c?.grade||'').slice(0,40),year:String(c?.year||'').slice(0,40),teacherName:String(c?.teacherName||'').slice(0,120),session:['morning','afternoon'].includes(c?.session)?c.session:'',color:/^#[0-9a-f]{6}$/i.test(c?.color||'')?c.color:'#0d9488'})):d.classes;
@@ -419,7 +457,7 @@ function normalizeState(raw){
  })):[];
   const studentIds=new Set(students.map(s=>s.id));
   const attendance={};if(x.attendance&&typeof x.attendance==='object')Object.entries(x.attendance).forEach(([k,v])=>{if(!v||typeof v!=='object')return;const classId=classes.find(c=>k.startsWith(c.id+'_'))?.id;if(!classId)return;const row={};Object.entries(v).forEach(([sid,st])=>{if(studentIds.has(sid)&&ATTENDANCE_STATUSES.includes(st))row[sid]=st});attendance[k]=row});
-  const seating={};classes.forEach(c=>{const src=x.seating?.[c.id]||{};const assignments={};let oldSingleCount=0;if(src.assignments&&typeof src.assignments==='object')Object.entries(src.assignments).forEach(([seat,val])=>{const seatNum=Math.max(0,parseInt(seat)||0);if(typeof val==='string'){if(studentIds.has(val)){const deskKey=String(Math.floor(seatNum/2)),side=seatNum%2===0?'left':'right';assignments[deskKey]=deskAssignment(assignments[deskKey]);assignments[deskKey][side]=val;oldSingleCount++;}}else if(val&&typeof val==='object'){const left=studentIds.has(String(val.left||''))?String(val.left):'';const right=studentIds.has(String(val.right||''))?String(val.right):'';if(left||right)assignments[String(seatNum)]={left,right};}});const fallbackDesks=Math.max(4,Math.ceil(students.filter(s=>s.classId===c.id).length/2));const rawSeats=Math.max(1,+src.seats||fallbackDesks);const deskCount=oldSingleCount?Math.max(fallbackDesks,Math.ceil(rawSeats/2)):Math.max(1,Math.min(50,rawSeats));seating[c.id]={lanes:[2,3,4,5,6].includes(+src.lanes)?+src.lanes:4,seats:deskCount,mode:src.mode==='3d'?'3d':'2d',assignments}});
+  const seating={};classes.forEach(c=>{const src=x.seating?.[c.id]||{};const assignments={};let oldSingleCount=0;if(src.assignments&&typeof src.assignments==='object')Object.entries(src.assignments).forEach(([seat,val])=>{const seatNum=Math.max(0,parseInt(seat)||0);if(typeof val==='string'){if(studentIds.has(val)){const deskKey=String(Math.floor(seatNum/2)),side=seatNum%2===0?'left':'right';assignments[deskKey]=deskAssignment(assignments[deskKey]);assignments[deskKey][side]=val;oldSingleCount++;}}else if(val&&typeof val==='object'){const left=studentIds.has(String(val.left||''))?String(val.left):'';const right=studentIds.has(String(val.right||''))?String(val.right):'';if(left||right)assignments[String(seatNum)]={left,right};}});const fallbackDesks=Math.max(4,Math.ceil(students.filter(s=>s.classId===c.id).length/2));const rawSeats=Math.max(1,+src.seats||fallbackDesks);const deskCount=oldSingleCount?Math.max(fallbackDesks,Math.ceil(rawSeats/2)):Math.max(1,Math.min(50,rawSeats));seating[c.id]={lanes:[2,3,4,5,6].includes(+src.lanes)?+src.lanes:4,seats:deskCount,mode:src.mode==='3d'?'3d':'2d',assignments};if(Object.keys(assignments).length===0&&students.some(s=>s.classId===c.id)){seating[c.id]=defaultSeating(students,c.id);}});
   const subjects=Array.isArray(x.subjects)&&x.subjects.length?x.subjects.map(v=>String(v).trim()).filter(Boolean).slice(0,80):d.subjects;
   const slotTimesMorning = Object.assign({}, TIMETABLE_SLOT_MORNING);
   if(x.timetable?.slotTimesMorning && typeof x.timetable.slotTimesMorning === 'object') {
@@ -567,7 +605,7 @@ function defaultState(){
     {id:'class_8a5',name:'8A5',grade:'Khối 8',year:'2026 - 2027',teacherName:'GVCN 8A5',session:'afternoon',color:'#ec4899'}
   ],students,
   attendance:{},attendanceDate:today(),
-  seating:{[cls]:{lanes:4,seats:Math.ceil(students.length/2),mode:'2d',assignments:{}}},
+  seating:{[cls]:defaultSeating(students, cls)},
   timetable:{
     morning:true,afternoon:true,morningCount:5,afternoonCount:5,
     slotTimes:Object.assign({},TIMETABLE_SLOT_AFTERNOON),
@@ -634,7 +672,7 @@ function applySchoolProfileMigration(x){
  return x;
 }
 function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const normalized=normalizeState(JSON.parse(raw)),upgraded=applySchoolProfileMigration(applyOfficialRosterMigration(normalized));try{localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded))}catch(e){}return upgraded}catch(e){console.warn('Không đọc được dữ liệu đã lưu',e);return defaultState()}}
-let state=loadState();
+var state=loadState();
 if(typeof window !== 'undefined') window.state = state;
 let chartRefs=[];
 function getMainModal(){
@@ -3724,18 +3762,51 @@ function exportCompetitionXlsx(){const ws=weekStartDate(state.competition.active
 async function exportCompetitionPDF(){const el=document.getElementById('competitionReport');if(!el)return;await exportElementPdf(el,`thi-dua-${activeClass().name}-${weekStartDate(state.competition.activeWeek)}.pdf`)}
 async function exportElementPdf(el,filename){const canvas=await html2canvas(el,{scale:1.5,backgroundColor:'#fff',useCORS:true});const {jsPDF}=window.jspdf,pdf=new jsPDF('p','mm','a4'),margin=10,contentW=190,contentH=277,pxPerMm=canvas.width/contentW,pagePx=Math.floor(contentH*pxPerMm);let yPx=0,page=0;while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx),slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sliceH;const ctx=slice.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,slice.width,slice.height);ctx.drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL('image/jpeg',.92),'JPEG',margin,margin,contentW,sliceH/pxPerMm,undefined,'FAST');yPx+=sliceH;page++}pdf.save(filename);toast(`Đã tạo PDF ${page} trang`)}
 
-function seatingCfg(){if(!state.seating[state.activeClassId])state.seating[state.activeClassId]={lanes:4,seats:Math.max(4,Math.ceil(classStudents().length/2)),mode:'2d',assignments:{}};return state.seating[state.activeClassId]}
-function renderSeating(){const cfg=seatingCfg(),ss=classStudents();const assigned=new Set(flattenDeskAssignments(cfg.assignments||{}));const unassigned=ss.filter(s=>!assigned.has(s.id));const positionCount=cfg.seats*2;return `<div class="section-head"><div><h2><i class="fa-solid fa-border-all text-primary me-2"></i>Sơ đồ chỗ ngồi ${esc(activeClass().name)}</h2><p>Bố cục mặc định 4 dãy; mỗi bàn xếp được <b>2 vị trí</b>. Bấm vào từng bàn để chọn học sinh cho vị trí 1 và vị trí 2.</p></div><div class="d-flex gap-2 flex-wrap"><div class="btn-group"><button class="btn ${cfg.mode==='3d'?'btn-primary':'btn-outline-primary'}" onclick="setSeatMode('3d')"><i class="fa-solid fa-cube"></i> 3D</button><button class="btn ${cfg.mode!=='3d'?'btn-primary':'btn-outline-primary'}" onclick="setSeatMode('2d')"><i class="fa-solid fa-layer-group"></i> 2D</button></div><select class="form-select" style="width:120px" onchange="setLanes(+this.value)">${[2,3,4,5,6].map(x=>`<option ${cfg.lanes===x?'selected':''} value="${x}">${x} Dãy</option>`).join('')}</select><select class="form-select" style="width:170px" onchange="setSeatCount(+this.value)">${[Math.max(4,Math.ceil(ss.length/2)),10,12,16,20,24,28].filter((x,i,a)=>x>0&&a.indexOf(x)===i).sort((a,b)=>a-b).map(x=>`<option ${cfg.seats===x?'selected':''} value="${x}">${x} bàn đôi</option>`).join('')}</select><span class="badge text-bg-light align-self-center">${positionCount} vị trí</span><button class="btn btn-outline-primary" onclick="randomSeat()"><i class="fa-solid fa-shuffle me-1"></i>Xếp ngẫu nhiên</button><button class="btn btn-outline-primary" onclick="seatGenderAlternating()"><i class="fa-solid fa-venus-mars me-1"></i>Nam–Nữ xen kẽ</button><button class="btn btn-outline-primary" onclick="seatByGroup()"><i class="fa-solid fa-people-group me-1"></i>Xếp theo tổ</button><button class="btn btn-outline-primary" onclick="clearSeats()"><i class="fa-solid fa-rotate-left me-1"></i>Xóa xếp chỗ</button><button class="btn btn-primary" onclick="exportSeatingPNG()"><i class="fa-solid fa-image me-1"></i>Xuất PNG</button></div></div><div class="grid-2"><div class="board-wrap" id="seatingExport"><div class="class-board ${cfg.mode==='3d'?'mode-3d':''}"><div class="chalkboard">✦ KỶ LUẬT · TRI THỨC · SÁNG TẠO ✦<br><span style="font-size:1.3rem">★ BẢNG LỚP ${esc(activeClass().name)} ★</span><br><small>${esc(state.teacher.school)} · Niên khóa: ${esc(activeClass().year)} · GVCN: ${esc(state.teacher.name)} · Sĩ số: ${ss.length}</small></div><div class="teacher-desk"><i class="fa-solid fa-desktop me-1"></i>BÀN GIÁO VIÊN<br><small>${esc(state.teacher.name)}</small></div><div class="seat-grid" style="grid-template-columns:repeat(${cfg.lanes},minmax(160px,1fr))">${Array.from({length:cfg.lanes},(_,lane)=>`<div class="seat-lane"><div class="lane-label">📌 DÃY ${lane+1}</div>${seatIndicesForLane(cfg.seats,cfg.lanes,lane).map(idx=>seatHtml(idx,cfg)).join('')}</div>`).join('')}</div></div></div><div class="card p-3"><h5 class="fw-bold">Học sinh chưa xếp (${unassigned.length})</h5><div class="small text-muted mb-2">Tổng ${ss.length} học sinh · ${positionCount} vị trí ngồi.</div>${unassigned.length?unassigned.map(s=>`<div class="d-flex align-items-center gap-2 border-bottom py-2">${renderAvatar(s,'mini-avatar')}<strong>${esc(s.name)}</strong></div>`).join(''):'<div class="alert alert-success">✓ Tất cả học sinh đã có chỗ ngồi!</div>'}</div></div>`}
+function seatingCfg(){
+  if(!state.seating) state.seating = {};
+  if(!state.seating[state.activeClassId]){
+    state.seating[state.activeClassId] = defaultSeating(state.students, state.activeClassId);
+  }
+  const cfg = state.seating[state.activeClassId];
+  if(!cfg.assignments || (Object.keys(cfg.assignments).length === 0 && !cfg.cleared)){
+    const ss = classStudents();
+    if(ss.length > 0){
+      const def = defaultSeating(state.students, state.activeClassId);
+      cfg.lanes = def.lanes;
+      cfg.seats = def.seats;
+      cfg.assignments = def.assignments;
+      delete cfg.cleared;
+      saveState(false);
+    }
+  }
+  return cfg;
+}
+
+function resetDefaultSeating(){
+  const def = defaultSeating(state.students, state.activeClassId);
+  delete def.cleared;
+  state.seating[state.activeClassId] = def;
+  saveState();
+  renderPage();
+  Swal.fire({
+    icon: 'success',
+    title: 'Đã khôi phục sơ đồ chuẩn 4 Tổ',
+    html: `Đã xếp toàn bộ <b>${classStudents().length}</b> học sinh lớp <b>${esc(activeClass().name)}</b> vào 4 dãy tương ứng 4 tổ (mỗi bàn 2 học sinh).<br><small>Thầy cô có thể bấm vào từng bàn để điều chỉnh vị trí nếu muốn.</small>`,
+    confirmButtonText: 'Đã hiểu'
+  });
+}
+
+function renderSeating(){const cfg=seatingCfg(),ss=classStudents();const assigned=new Set(flattenDeskAssignments(cfg.assignments||{}));const unassigned=ss.filter(s=>!assigned.has(s.id));const positionCount=cfg.seats*2;return `<div class="section-head"><div><h2><i class="fa-solid fa-border-all text-primary me-2"></i>Sơ đồ chỗ ngồi ${esc(activeClass().name)}</h2><p>Bố cục mặc định 4 dãy; mỗi bàn xếp được <b>2 vị trí</b>. Bấm vào từng bàn để chọn học sinh cho vị trí 1 và vị trí 2.</p></div><div class="d-flex gap-2 flex-wrap"><div class="btn-group"><button class="btn ${cfg.mode==='3d'?'btn-primary':'btn-outline-primary'}" onclick="setSeatMode('3d')"><i class="fa-solid fa-cube"></i> 3D</button><button class="btn ${cfg.mode!=='3d'?'btn-primary':'btn-outline-primary'}" onclick="setSeatMode('2d')"><i class="fa-solid fa-layer-group"></i> 2D</button></div><select class="form-select" style="width:120px" onchange="setLanes(+this.value)">${[2,3,4,5,6].map(x=>`<option ${cfg.lanes===x?'selected':''} value="${x}">${x} Dãy</option>`).join('')}</select><select class="form-select" style="width:170px" onchange="setSeatCount(+this.value)">${[Math.max(4,Math.ceil(ss.length/2)),10,12,16,20,24,28].filter((x,i,a)=>x>0&&a.indexOf(x)===i).sort((a,b)=>a-b).map(x=>`<option ${cfg.seats===x?'selected':''} value="${x}">${x} bàn đôi</option>`).join('')}</select><span class="badge text-bg-light align-self-center">${positionCount} vị trí</span><button class="btn btn-outline-success fw-bold" onclick="resetDefaultSeating()"><i class="fa-solid fa-people-group me-1"></i>Xếp chuẩn theo tổ</button><button class="btn btn-outline-primary" onclick="randomSeat()"><i class="fa-solid fa-shuffle me-1"></i>Xếp ngẫu nhiên</button><button class="btn btn-outline-primary" onclick="seatGenderAlternating()"><i class="fa-solid fa-venus-mars me-1"></i>Nam–Nữ xen kẽ</button><button class="btn btn-outline-danger" onclick="clearSeats()"><i class="fa-solid fa-rotate-left me-1"></i>Xóa xếp chỗ</button><button class="btn btn-primary" onclick="exportSeatingPNG()"><i class="fa-solid fa-image me-1"></i>Xuất PNG</button></div></div><div class="grid-2"><div class="board-wrap" id="seatingExport"><div class="class-board ${cfg.mode==='3d'?'mode-3d':''}"><div class="chalkboard">✦ KỶ LUẬT · TRI THỨC · SÁNG TẠO ✦<br><span style="font-size:1.3rem">★ BẢNG LỚP ${esc(activeClass().name)} ★</span><br><small>${esc(state.teacher.school)} · Niên khóa: ${esc(activeClass().year)} · GVCN: ${esc(state.teacher.name)} · Sĩ số: ${ss.length}</small></div><div class="teacher-desk"><i class="fa-solid fa-desktop me-1"></i>BÀN GIÁO VIÊN<br><small>${esc(state.teacher.name)}</small></div><div class="seat-grid" style="grid-template-columns:repeat(${cfg.lanes},minmax(160px,1fr))">${Array.from({length:cfg.lanes},(_,lane)=>`<div class="seat-lane"><div class="lane-label">📌 DÃY ${lane+1}</div>${seatIndicesForLane(cfg.seats,cfg.lanes,lane).map(idx=>seatHtml(idx,cfg)).join('')}</div>`).join('')}</div></div></div><div class="card p-3"><h5 class="fw-bold">Học sinh chưa xếp (${unassigned.length})</h5><div class="small text-muted mb-2">Tổng ${ss.length} học sinh · ${positionCount} vị trí ngồi.</div>${unassigned.length?unassigned.map(s=>`<div class="d-flex align-items-center gap-2 border-bottom py-2">${renderAvatar(s,'mini-avatar')}<strong>${esc(s.name)}</strong></div>`).join(''):'<div class="alert alert-success">✓ Tất cả học sinh đã có chỗ ngồi!</div>'}</div></div>`}
 function seatIndicesForLane(total,lanes,lane){const arr=[];for(let i=lane;i<total;i+=lanes)arr.push(i);return arr}
 function seatHtml(idx,cfg){const desk=deskAssignment(cfg.assignments[idx]);const left=state.students.find(x=>x.id===desk.left),right=state.students.find(x=>x.id===desk.right);const shortName=s=>esc((s?.name||'').split(' ').slice(-2).join(' ')||'Trống');return `<div class="seat ${left||right?'filled':''}" onclick="chooseSeat(${idx})"><div><small>Bàn ${idx+1} · 2 vị trí</small><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><div style="border:1.5px dashed ${left?'#2dd4bf':'#cbd5e1'};border-radius:14px;padding:8px;min-height:78px;background:${left?'#ecfeff':'#f8fafc'};display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center"><div class="small text-muted">Vị trí 1</div>${left?`${renderAvatar(left,'mini-avatar')}<strong style="font-size:.8rem">${shortName(left)}</strong>`:'<div class="text-muted small mt-1"><i class="fa-solid fa-plus"></i> Trống</div>'}</div><div style="border:1.5px dashed ${right?'#2dd4bf':'#cbd5e1'};border-radius:14px;padding:8px;min-height:78px;background:${right?'#ecfeff':'#f8fafc'};display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center"><div class="small text-muted">Vị trí 2</div>${right?`${renderAvatar(right,'mini-avatar')}<strong style="font-size:.8rem">${shortName(right)}</strong>`:'<div class="text-muted small mt-1"><i class="fa-solid fa-plus"></i> Trống</div>'}</div></div></div></div>`}
 function setSeatMode(m){seatingCfg().mode=m;saveState(false);renderPage()}
 function setLanes(n){seatingCfg().lanes=n;saveState(false);renderPage()}function setSeatCount(n){seatingCfg().seats=n;Object.keys(seatingCfg().assignments).forEach(k=>{if(+k>=n)delete seatingCfg().assignments[k]});saveState(false);renderPage()}
 function shuffled(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function fillDeskSequence(ids,cfg,deskOrder=null){cfg.assignments={};const desks=deskOrder||Array.from({length:cfg.seats},(_,i)=>i);let p=0;desks.forEach(idx=>{if(p>=ids.length)return;const left=ids[p++]||'',right=ids[p++]||'';cfg.assignments[String(idx)]={left,right}})}
+function fillDeskSequence(ids,cfg,deskOrder=null){delete cfg.cleared;cfg.assignments={};const desks=deskOrder||Array.from({length:cfg.seats},(_,i)=>i);let p=0;desks.forEach(idx=>{if(p>=ids.length)return;const left=ids[p++]||'',right=ids[p++]||'';cfg.assignments[String(idx)]={left,right}})}
 function randomSeat(){const cfg=seatingCfg(),ids=shuffled(classStudents().map(s=>s.id));fillDeskSequence(ids,cfg);saveState();renderPage();toast('Đã xếp chỗ ngẫu nhiên')}
 function seatGenderAlternating(){const cfg=seatingCfg(),ss=classStudents(),male=shuffled(ss.filter(s=>s.gender==='Nam')),female=shuffled(ss.filter(s=>s.gender==='Nữ')),other=shuffled(ss.filter(s=>s.gender!=='Nam'&&s.gender!=='Nữ'));const seq=[];let turn=male.length>=female.length?'Nam':'Nữ';while(male.length||female.length){if(turn==='Nam'&&male.length)seq.push(male.shift());else if(turn==='Nữ'&&female.length)seq.push(female.shift());else if(male.length)seq.push(male.shift());else if(female.length)seq.push(female.shift());turn=turn==='Nam'?'Nữ':'Nam'}seq.push(...other);cfg.lanes=4;cfg.seats=Math.max(cfg.seats,Math.ceil(seq.length/2));fillDeskSequence(seq.map(s=>s.id),cfg);saveState();renderPage();Swal.fire({icon:'success',title:'Đã xếp Nam–Nữ xen kẽ',html:`Đã xếp ${seq.length} học sinh theo nguyên tắc xen kẽ tối đa.<br><small>Bấm vào từng bàn để điều chỉnh thủ công nếu cần.</small>`,timer:2200,showConfirmButton:false})}
-function seatByGroup(){const cfg=seatingCfg(),ss=classStudents(),groups=(state.competition?.groups||['Tổ 1','Tổ 2','Tổ 3','Tổ 4']).slice(0,4);cfg.lanes=4;const buckets=groups.map(g=>ss.filter(s=>state.competition?.groupAssignments?.[s.id]===g));const assigned=new Set(buckets.flat().map(s=>s.id));const ungrouped=ss.filter(s=>!assigned.has(s.id));if(ungrouped.length)buckets[0].push(...ungrouped);const maxSize=Math.max(1,...buckets.map(b=>b.length));const desksPerLane=Math.ceil(maxSize/2);cfg.seats=Math.max(4*desksPerLane,Math.ceil(ss.length/2));cfg.assignments={};buckets.forEach((members,lane)=>{const desks=seatIndicesForLane(cfg.seats,4,lane);let p=0;desks.forEach(idx=>{if(p>=members.length)return;cfg.assignments[String(idx)]={left:members[p++]?.id||'',right:members[p++]?.id||''}})});saveState();renderPage();Swal.fire({icon:'success',title:'Đã xếp theo tổ',html:`${groups.map((g,i)=>`${esc(g)} → Dãy ${i+1}: <b>${buckets[i].length}</b> HS`).join('<br>')}<hr><small>Có thể bấm từng bàn để đổi vị trí sau khi xếp.</small>`,confirmButtonText:'Đã hiểu'})}
-function clearSeats(){seatingCfg().assignments={};saveState();renderPage()}
+function seatByGroup(){resetDefaultSeating()}
+function clearSeats(){const cfg=seatingCfg();cfg.assignments={};cfg.cleared=true;saveState();renderPage();toast('Đã xóa xếp chỗ')}
 async function chooseSeat(idx){const cfg=seatingCfg();const current=deskAssignment(cfg.assignments[idx]);const currentIds=[current.left,current.right].filter(Boolean);const used=new Set(flattenDeskAssignments(cfg.assignments));currentIds.forEach(id=>used.delete(id));const options=classStudents().filter(s=>!used.has(s.id)||currentIds.includes(s.id));const opts=['<option value="">-- Để trống --</option>',...options.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`)].join('');const html=`<div class="text-start"><div class="small text-muted mb-2">Bàn ${idx+1} có 2 vị trí ngồi.</div><label class="form-label fw-bold">Vị trí 1</label><select id="deskLeft" class="form-select mb-3">${opts}</select><label class="form-label fw-bold">Vị trí 2</label><select id="deskRight" class="form-select">${opts}</select></div>`;await Swal.fire({title:'Chọn học sinh cho bàn '+(idx+1),html,showCancelButton:true,confirmButtonText:'Lưu xếp chỗ',didOpen:()=>{document.getElementById('deskLeft').value=current.left||'';document.getElementById('deskRight').value=current.right||''},preConfirm:()=>{const left=document.getElementById('deskLeft').value,right=document.getElementById('deskRight').value;if(left&&right&&left===right){Swal.showValidationMessage('Không thể chọn cùng một học sinh cho cả 2 vị trí');return false}cfg.assignments[idx]={left,right};if(!left&&!right)delete cfg.assignments[idx];saveState();renderPage();return true}})}
 async function exportSeatingPNG(){const el=document.getElementById('seatingExport');const c=await html2canvas(el,{scale:2,backgroundColor:'#ffffff'});const a=document.createElement('a');a.download=`so-do-lop-${activeClass().name}.png`;a.href=c.toDataURL('image/png');a.click();toast('Đã xuất ảnh sơ đồ')}
 function setTimetableViewSession(sess){
