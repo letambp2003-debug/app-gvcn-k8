@@ -630,7 +630,53 @@ function applySchoolProfileMigration(x){
 }
 function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultState();const normalized=normalizeState(JSON.parse(raw)),upgraded=applySchoolProfileMigration(applyOfficialRosterMigration(normalized));try{localStorage.setItem(STORAGE_KEY,JSON.stringify(upgraded))}catch(e){}return upgraded}catch(e){console.warn('Không đọc được dữ liệu đã lưu',e);return defaultState()}}
 let state=loadState();
-let chartRefs=[]; let mainModal = { hide: () => {}, show: () => {} }; let countdownInterval=null; let countdown={total:300,left:300,running:false}; let quietInterval=null; let quietLeft=0; let micCtx=null,micStream=null,micRAF=null;
+if(typeof window !== 'undefined') window.state = state;
+let chartRefs=[];
+function getMainModal(){
+  const el = document.getElementById('mainModal');
+  if (el && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+    return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+  }
+  return null;
+}
+function hideModal(){
+  try {
+    const el = document.getElementById('mainModal');
+    if (el) {
+      if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const inst = bootstrap.Modal.getInstance(el);
+        if (inst && typeof inst.hide === 'function') inst.hide();
+      }
+      setTimeout(() => {
+        try {
+          if (el.classList.contains('show')) {
+            el.classList.remove('show');
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+            el.removeAttribute('aria-modal');
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+          }
+        } catch(e){}
+      }, 150);
+    }
+  } catch(e){}
+}
+let mainModal = {
+  hide: () => hideModal(),
+  show: () => {
+    try {
+      const el = document.getElementById('mainModal');
+      if (el && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const inst = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+        inst.show();
+      }
+    } catch(e){}
+  }
+};
+let countdownInterval=null; let countdown={total:300,left:300,running:false}; let quietInterval=null; let quietLeft=0; let micCtx=null,micStream=null,micRAF=null;
 
 
 function syncClassesAndAccounts(forceUpdateNames = true) {
@@ -779,6 +825,7 @@ function ensureLocalAccountsForClass(classId, className, teacherName) {
 syncClassesAndAccounts(true);
 
 let currentUser = loadUserSession();
+if(typeof window !== 'undefined') window.currentUser = currentUser;
 function loadUserSession(){
   try {
     const raw = sessionStorage.getItem('gvcn_user_session') || localStorage.getItem('gvcn_user_session');
@@ -788,6 +835,7 @@ function loadUserSession(){
 }
 function saveUserSession(user){
   currentUser = user;
+  if(typeof window !== 'undefined') window.currentUser = user;
   sessionStorage.setItem('gvcn_user_session', JSON.stringify(user));
   localStorage.setItem('gvcn_user_session', JSON.stringify(user));
 }
@@ -970,7 +1018,7 @@ function showLoginModal(){
             • GVCN các lớp khác: <code>gv_[mã lớp]</code> hoặc gõ tên lớp (VD: <code>8a3</code>) / pass: <code>123456</code><br>
             • Tổ Trưởng: chuyển sang tab <b>Tổ Trưởng (Mã PIN)</b> / PIN: <code>1234</code>.
           </div>
-          <button type="submit" class="btn btn-primary w-100 py-2 fw-bold"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập Giáo viên</button>
+          <button type="submit" id="btnTeacherLoginSubmit" class="btn btn-primary w-100 py-2 fw-bold" onclick="handleLoginSubmit(event)"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập Giáo viên</button>
         </form>
       </div>
 
@@ -1008,7 +1056,7 @@ function showLoginModal(){
           <div class="alert alert-warning small py-2 mb-3">
             <i class="fa-solid fa-shield-halved me-1"></i><b>Quyền hạn Tổ Trưởng:</b> Chỉ được xem và chấm điểm các bạn trong tổ của mình; không xem được CCCD và dữ liệu cá nhân nhạy cảm.
           </div>
-          <button type="submit" class="btn btn-success w-100 py-2 fw-bold"><i class="fa-solid fa-key me-1"></i>Đăng nhập Tổ Trưởng</button>
+          <button type="submit" id="btnPinLoginSubmit" class="btn btn-success w-100 py-2 fw-bold" onclick="handlePinLoginSubmit(event)"><i class="fa-solid fa-key me-1"></i>Đăng nhập Tổ Trưởng</button>
         </form>
       </div>
     </div>
@@ -1023,254 +1071,274 @@ function showLoginModal(){
     </div>
   `);
 }
+let isLoggingIn = false;
 async function handleLoginSubmit(e){
-  e.preventDefault();
-  const rawU = document.getElementById('loginUsername').value.trim();
-  const p = document.getElementById('loginPassword').value.trim();
+  if(e){
+    try { e.preventDefault(); } catch(err){}
+    try { if(typeof e.stopPropagation === 'function') e.stopPropagation(); } catch(err){}
+  }
+  if(isLoggingIn) return;
+  isLoggingIn = true;
+  try {
+    const rawU = (document.getElementById('loginUsername')?.value || '').trim();
+    const p = (document.getElementById('loginPassword')?.value || '').trim();
 
-  if(!rawU) return toast('Vui lòng nhập tên đăng nhập', 'warning');
-  if(!p) return toast('Vui lòng nhập mật khẩu', 'warning');
+    if(!rawU) return toast('Vui lòng nhập tên đăng nhập', 'warning');
+    if(!p) return toast('Vui lòng nhập mật khẩu', 'warning');
 
-  // Chuẩn hóa danh sách tài khoản cục bộ & tìm kiếm thông minh
-  const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
-  let localAcc = findMatchingAccount(accountsList, rawU);
+    // Chuẩn hóa danh sách tài khoản cục bộ & tìm kiếm thông minh
+    const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+    let localAcc = findMatchingAccount(accountsList, rawU);
 
-  // Đảm bảo admin hoặc gv_8a6 luôn có tài khoản đối chiếu
-  const uLower = rawU.toLowerCase().trim();
-  const cleanU = uLower.replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
-  if (!localAcc) {
-    if (uLower === 'admin') {
-      localAcc = { id: 'acc_admin', username: 'admin', password: 'admin123', fullname: 'Ban Giám Hiệu', role: 'admin', assignedClass: '*', assignedGroup: '*', status: 'active', phone: '', updatedAt: new Date().toISOString() };
+    // Đảm bảo admin hoặc gv_8a6 luôn có tài khoản đối chiếu
+    const uLower = rawU.toLowerCase().trim();
+    const cleanU = uLower.replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
+    if (!localAcc) {
+      if (uLower === 'admin') {
+        localAcc = { id: 'acc_admin', username: 'admin', password: 'admin123', fullname: 'Ban Giám Hiệu', role: 'admin', assignedClass: '*', assignedGroup: '*', status: 'active', phone: '', updatedAt: new Date().toISOString() };
+        state.accounts = state.accounts || [];
+        state.accounts.unshift(localAcc);
+      } else if (uLower === 'gv_8a6' || cleanU === '8a6') {
+        localAcc = { id: 'acc_gv_8a6', username: 'gv_8a6', password: '123456', fullname: 'Lê Tâm (GVCN 8A6)', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*', status: 'active', phone: '', updatedAt: new Date().toISOString() };
+        state.accounts = state.accounts || [];
+        state.accounts.push(localAcc);
+      }
+    }
+
+    // Khớp mật khẩu: hỗ trợ mật khẩu tùy chỉnh HOẶC mật khẩu mặc định hệ thống
+    const isMatchLocal = localAcc && (
+      String(localAcc.password).trim() === p ||
+      String(localAcc.pin || '').trim() === p ||
+      (localAcc.role === 'admin' && (p === 'admin123' || p === '123456' || p === '123')) ||
+      (localAcc.role === 'teacher' && p === '123456') ||
+      (localAcc.role === 'group_leader' && p === '1234')
+    );
+
+    // 1. NẾU TÀI KHOẢN CỤC BỘ KHỚP MẬT KHẨU: ĐĂNG NHẬP NGAY TỨC THÌ!
+    if(localAcc && isMatchLocal){
+      if(localAcc.status === 'locked'){
+        return Swal.fire({
+          icon: 'error',
+          title: 'Tài khoản bị khóa',
+          text: 'Tài khoản này đã bị Quản trị viên tạm khóa. Vui lòng liên hệ Ban Giám Hiệu.'
+        });
+      }
+
+      // Nếu người dùng đăng nhập bằng mật khẩu mặc định, đồng bộ lại mật khẩu lưu trữ
+      if (localAcc.password !== p && (p === 'admin123' || p === '123456' || p === '1234')) {
+        localAcc.password = p;
+        if (localAcc.role === 'group_leader') localAcc.pin = p;
+        saveState(false);
+      }
+
+      saveUserSession(localAcc);
+      applyUserPermissions();
+      hideModal();
+      toast(`Đăng nhập thành công: ${localAcc.fullname}!`);
+
+      // Tự động đẩy tài khoản này lên Cloud để đồng bộ ngay (không chặn UI)
+      if(state.settings?.gasApiUrl){
+        callGasApi('save_account', { accountData: localAcc });
+        callGasApi('update_teacher_password', {
+          username: localAcc.username,
+          newPassword: p,
+          fullname: localAcc.fullname,
+          role: localAcc.role,
+          assignedClass: localAcc.assignedClass,
+          assignedGroup: localAcc.assignedGroup
+        });
+        pullClassDataFromCloud(false);
+      }
+      return;
+    }
+
+    // 2. NẾU CỤC BỘ CHƯA KHỚP: Thử xác thực qua Cloud Google Apps Script
+    let cloudSuccess = false;
+    let cloudUser = null;
+    let cloudErrorMsg = '';
+
+    if(state.settings?.gasApiUrl){
+      Swal.fire({
+        title: 'Đang xác thực...',
+        text: 'Đang kiểm tra dữ liệu tài khoản...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const res = await callGasApi('login', { username: rawU, password: p });
+        if(res && res.status === 'success' && res.user){
+          cloudSuccess = true;
+          cloudUser = res.user;
+        } else if(res && res.status === 'error'){
+          cloudErrorMsg = res.message || '';
+        }
+      } catch(err) {
+        console.warn('Lỗi gọi API Cloud login:', err);
+      }
+    }
+
+    // 3. Nếu Cloud khớp thông tin
+    if(cloudSuccess && cloudUser){
       state.accounts = state.accounts || [];
-      state.accounts.unshift(localAcc);
-    } else if (uLower === 'gv_8a6' || cleanU === '8a6') {
-      localAcc = { id: 'acc_gv_8a6', username: 'gv_8a6', password: '123456', fullname: 'Lê Tâm (GVCN 8A6)', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*', status: 'active', phone: '', updatedAt: new Date().toISOString() };
+      const idx = state.accounts.findIndex(a => a.username.toLowerCase() === cloudUser.username.toLowerCase());
+      if (idx >= 0) {
+        state.accounts[idx] = Object.assign(state.accounts[idx], cloudUser, { password: p });
+      } else {
+        state.accounts.push(Object.assign({ id: uid('acc'), password: p, status: 'active' }, cloudUser));
+      }
+      saveState(false);
+
+      saveUserSession(cloudUser);
+      applyUserPermissions();
+      if (Swal.isVisible()) Swal.close();
+      hideModal();
+      toast('Đăng nhập thành công: ' + cloudUser.fullname);
+      pullClassDataFromCloud(false);
+      return;
+    }
+
+    // 4. Nếu cả Cloud và Cục bộ đều sai
+    if (Swal.isVisible()) Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Đăng nhập thất bại',
+      html: `<div class="text-start">
+        <p class="mb-2 text-danger fw-bold">${cloudErrorMsg || 'Tên đăng nhập hoặc mật khẩu không chính xác.'}</p>
+        <div class="alert alert-warning small py-2 mb-3">
+          <i class="fa-solid fa-circle-info me-1"></i><b>Mật khẩu mặc định hệ thống:</b>
+          <ul class="mb-0 ps-3 mt-1">
+            <li>Admin: tài khoản <code>admin</code> / pass: <code>admin123</code>.</li>
+            <li>GVCN 8A6: tài khoản <code>gv_8a6</code> / pass: <code>123456</code>.</li>
+            <li>Các GVCN khác: tài khoản <code>gv_[mã lớp]</code> hoặc <code>8a3</code> / pass: <code>123456</code>.</li>
+            <li>Tổ Trưởng: chọn tab <b>Tổ Trưởng</b> / PIN: <code>1234</code>.</li>
+          </ul>
+        </div>
+        <div class="text-center">
+          <button type="button" class="btn btn-warning w-100 py-2 fw-bold" onclick="resetDefaultCredentials()">
+            <i class="fa-solid fa-rotate-left me-1"></i>Khôi phục toàn bộ mật khẩu mặc định (admin123 / 123456)
+          </button>
+        </div>
+      </div>`
+    });
+  } finally {
+    isLoggingIn = false;
+  }
+}
+let isPinLoggingIn = false;
+async function handlePinLoginSubmit(e){
+  if(e){
+    try { e.preventDefault(); } catch(err){}
+    try { if(typeof e.stopPropagation === 'function') e.stopPropagation(); } catch(err){}
+  }
+  if(isPinLoggingIn) return;
+  isPinLoggingIn = true;
+  try {
+    const classId = document.getElementById('pinLoginClass')?.value || '';
+    const group = document.getElementById('pinLoginGroup')?.value || '';
+    const pin = (document.getElementById('pinLoginPin')?.value || '').trim();
+
+    if(!pin) return toast('Vui lòng nhập mã PIN', 'warning');
+
+    // 1. Kiểm tra tài khoản tổ trưởng cục bộ trước (đăng nhập ngay tức thì nếu đúng)
+    const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+    let localAcc = accountsList.find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group);
+
+    // Nếu chưa có tài khoản tổ trưởng cho tổ này, tạo ngay với mã PIN mặc định 1234
+    if (!localAcc && pin === '1234') {
+      const cleanSuffix = classId.replace(/^class_/, '').toLowerCase();
+      const tNum = group.replace(/[^0-9]/g, '') || '1';
+      localAcc = {
+        id: uid('acc'),
+        username: `totruong_${cleanSuffix}_t${tNum}`,
+        password: '1234',
+        pin: '1234',
+        fullname: `Tổ Trưởng ${group} (${cleanSuffix.toUpperCase()})`,
+        role: 'group_leader',
+        assignedClass: classId,
+        assignedGroup: group,
+        status: 'active',
+        phone: '',
+        updatedAt: new Date().toISOString()
+      };
       state.accounts = state.accounts || [];
       state.accounts.push(localAcc);
-    }
-  }
-
-  // Khớp mật khẩu: hỗ trợ mật khẩu tùy chỉnh HOẶC mật khẩu mặc định hệ thống
-  const isMatchLocal = localAcc && (
-    String(localAcc.password).trim() === p ||
-    String(localAcc.pin || '').trim() === p ||
-    (localAcc.role === 'admin' && (p === 'admin123' || p === '123456' || p === '123')) ||
-    (localAcc.role === 'teacher' && p === '123456') ||
-    (localAcc.role === 'group_leader' && p === '1234')
-  );
-
-  // 1. NẾU TÀI KHOẢN CỤC BỘ KHỚP MẬT KHẨU: ĐĂNG NHẬP NGAY TỨC THÌ!
-  if(localAcc && isMatchLocal){
-    if(localAcc.status === 'locked'){
-      return Swal.fire({
-        icon: 'error',
-        title: 'Tài khoản bị khóa',
-        text: 'Tài khoản này đã bị Quản trị viên tạm khóa. Vui lòng liên hệ Ban Giám Hiệu.'
-      });
-    }
-
-    // Nếu người dùng đăng nhập bằng mật khẩu mặc định, đồng bộ lại mật khẩu lưu trữ
-    if (localAcc.password !== p && (p === 'admin123' || p === '123456' || p === '1234')) {
-      localAcc.password = p;
-      if (localAcc.role === 'group_leader') localAcc.pin = p;
       saveState(false);
     }
 
-    saveUserSession(localAcc);
-    applyUserPermissions();
-    mainModal.hide();
-    toast(`Đăng nhập thành công: ${localAcc.fullname}!`);
+    const isPinMatch = localAcc && (
+      String(localAcc.pin).trim() === pin ||
+      String(localAcc.password).trim() === pin ||
+      pin === '1234'
+    );
 
-    // Tự động đẩy tài khoản này lên Cloud để đồng bộ ngay (không chặn UI)
+    if(localAcc && isPinMatch){
+      if(localAcc.status === 'locked'){
+        return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản tổ trưởng này đang bị tạm khóa.' });
+      }
+      if (localAcc.pin !== pin && pin === '1234') {
+        localAcc.pin = '1234';
+        localAcc.password = '1234';
+        saveState(false);
+      }
+      saveUserSession(localAcc);
+      applyUserPermissions();
+      hideModal();
+      toast(`Đăng nhập Tổ trưởng: ${localAcc.fullname}!`);
+      return;
+    }
+
+    // 2. Thử Cloud nếu cục bộ chưa khớp
+    let cloudSuccess = false;
+    let cloudUser = null;
+    let cloudErrorMsg = '';
+
     if(state.settings?.gasApiUrl){
-      callGasApi('save_account', { accountData: localAcc });
-      callGasApi('update_teacher_password', {
-        username: localAcc.username,
-        newPassword: p,
-        fullname: localAcc.fullname,
-        role: localAcc.role,
-        assignedClass: localAcc.assignedClass,
-        assignedGroup: localAcc.assignedGroup
-      });
+      try {
+        const res = await callGasApi('login', {
+          isPinLogin: true,
+          targetClass: classId,
+          targetGroup: group,
+          pin: pin
+        });
+        if(res && res.status === 'success' && res.user){
+          cloudSuccess = true;
+          cloudUser = res.user;
+        } else if(res && res.status === 'error'){
+          cloudErrorMsg = res.message || '';
+        }
+      } catch(err) {
+        console.warn('Lỗi gọi API PIN Cloud:', err);
+      }
+    }
+
+    // 3. Nếu Cloud khớp
+    if(cloudSuccess && cloudUser){
+      saveUserSession(cloudUser);
+      applyUserPermissions();
+      hideModal();
+      toast(`Đăng nhập thành công: ${cloudUser.fullname}!`);
       pullClassDataFromCloud(false);
+      return;
     }
-    return;
-  }
 
-  // 2. NẾU CỤC BỘ CHƯA KHỚP: Thử xác thực qua Cloud Google Apps Script
-  let cloudSuccess = false;
-  let cloudUser = null;
-  let cloudErrorMsg = '';
-
-  if(state.settings?.gasApiUrl){
+    // 4. Cả hai đều không khớp
     Swal.fire({
-      title: 'Đang xác thực...',
-      text: 'Đang kiểm tra dữ liệu tài khoản...',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
-
-    try {
-      const res = await callGasApi('login', { username: rawU, password: p });
-      if(res && res.status === 'success' && res.user){
-        cloudSuccess = true;
-        cloudUser = res.user;
-      } else if(res && res.status === 'error'){
-        cloudErrorMsg = res.message || '';
-      }
-    } catch(err) {
-      console.warn('Lỗi gọi API Cloud login:', err);
-    }
-  }
-
-  // 3. Nếu Cloud khớp thông tin
-  if(cloudSuccess && cloudUser){
-    state.accounts = state.accounts || [];
-    const idx = state.accounts.findIndex(a => a.username.toLowerCase() === cloudUser.username.toLowerCase());
-    if (idx >= 0) {
-      state.accounts[idx] = Object.assign(state.accounts[idx], cloudUser, { password: p });
-    } else {
-      state.accounts.push(Object.assign({ id: uid('acc'), password: p, status: 'active' }, cloudUser));
-    }
-    saveState(false);
-
-    saveUserSession(cloudUser);
-    applyUserPermissions();
-    if (Swal.isVisible()) Swal.close();
-    mainModal.hide();
-    toast('Đăng nhập thành công: ' + cloudUser.fullname);
-    pullClassDataFromCloud(false);
-    return;
-  }
-
-  // 4. Nếu cả Cloud và Cục bộ đều sai
-  if (Swal.isVisible()) Swal.close();
-  Swal.fire({
-    icon: 'error',
-    title: 'Đăng nhập thất bại',
-    html: `<div class="text-start">
-      <p class="mb-2 text-danger fw-bold">${cloudErrorMsg || 'Tên đăng nhập hoặc mật khẩu không chính xác.'}</p>
-      <div class="alert alert-warning small py-2 mb-3">
-        <i class="fa-solid fa-circle-info me-1"></i><b>Mật khẩu mặc định hệ thống:</b>
-        <ul class="mb-0 ps-3 mt-1">
-          <li>Admin: tài khoản <code>admin</code> / pass: <code>admin123</code>.</li>
-          <li>GVCN 8A6: tài khoản <code>gv_8a6</code> / pass: <code>123456</code>.</li>
-          <li>Các GVCN khác: tài khoản <code>gv_[mã lớp]</code> hoặc <code>8a3</code> / pass: <code>123456</code>.</li>
-          <li>Tổ Trưởng: chọn tab <b>Tổ Trưởng</b> / PIN: <code>1234</code>.</li>
-        </ul>
-      </div>
-      <div class="text-center">
-        <button type="button" class="btn btn-warning w-100 py-2 fw-bold" onclick="resetDefaultCredentials()">
-          <i class="fa-solid fa-rotate-left me-1"></i>Khôi phục toàn bộ mật khẩu mặc định (admin123 / 123456)
+      icon: 'error',
+      title: 'Mã PIN không chính xác',
+      html: `<div class="text-start">
+        <p class="mb-2 text-danger">${cloudErrorMsg || `Mã PIN không đúng cho ${group} của lớp đang chọn.`}</p>
+        <div class="alert alert-warning small py-2 mb-2">
+          Mã PIN mặc định cho Tổ Trưởng là <b>1234</b>.
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-warning w-100" onclick="resetDefaultCredentials()">
+          <i class="fa-solid fa-rotate-left me-1"></i>Khôi phục mã PIN gốc (1234)
         </button>
-      </div>
-    </div>`
-  });
-}
-async function handlePinLoginSubmit(e){
-  e.preventDefault();
-  const classId = document.getElementById('pinLoginClass').value;
-  const group = document.getElementById('pinLoginGroup').value;
-  const pin = document.getElementById('pinLoginPin').value.trim();
-
-  if(!pin) return toast('Vui lòng nhập mã PIN', 'warning');
-
-  // 1. Kiểm tra tài khoản tổ trưởng cục bộ trước (đăng nhập ngay tức thì nếu đúng)
-  const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
-  let localAcc = accountsList.find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group);
-
-  // Nếu chưa có tài khoản tổ trưởng cho tổ này, tạo ngay với mã PIN mặc định 1234
-  if (!localAcc && pin === '1234') {
-    const cleanSuffix = classId.replace(/^class_/, '').toLowerCase();
-    const tNum = group.replace(/[^0-9]/g, '') || '1';
-    localAcc = {
-      id: uid('acc'),
-      username: `totruong_${cleanSuffix}_t${tNum}`,
-      password: '1234',
-      pin: '1234',
-      fullname: `Tổ Trưởng ${group} (${cleanSuffix.toUpperCase()})`,
-      role: 'group_leader',
-      assignedClass: classId,
-      assignedGroup: group,
-      status: 'active',
-      phone: '',
-      updatedAt: new Date().toISOString()
-    };
-    state.accounts = state.accounts || [];
-    state.accounts.push(localAcc);
-    saveState(false);
+      </div>`
+    });
+  } finally {
+    isPinLoggingIn = false;
   }
-
-  const isPinMatch = localAcc && (
-    String(localAcc.pin).trim() === pin ||
-    String(localAcc.password).trim() === pin ||
-    pin === '1234'
-  );
-
-  if(localAcc && isPinMatch){
-    if(localAcc.status === 'locked'){
-      return Swal.fire({ icon: 'error', title: 'Tài khoản bị khóa', text: 'Tài khoản tổ trưởng này đang bị tạm khóa.' });
-    }
-    if (localAcc.pin !== pin && pin === '1234') {
-      localAcc.pin = '1234';
-      localAcc.password = '1234';
-      saveState(false);
-    }
-    saveUserSession(localAcc);
-    applyUserPermissions();
-    mainModal.hide();
-    toast(`Đăng nhập Tổ trưởng: ${localAcc.fullname}!`);
-    return;
-  }
-
-  // 2. Thử Cloud nếu cục bộ chưa khớp
-  let cloudSuccess = false;
-  let cloudUser = null;
-  let cloudErrorMsg = '';
-
-  if(state.settings?.gasApiUrl){
-    try {
-      const res = await callGasApi('login', {
-        isPinLogin: true,
-        targetClass: classId,
-        targetGroup: group,
-        pin: pin
-      });
-      if(res && res.status === 'success' && res.user){
-        cloudSuccess = true;
-        cloudUser = res.user;
-      } else if(res && res.status === 'error'){
-        cloudErrorMsg = res.message || '';
-      }
-    } catch(err) {
-      console.warn('Lỗi gọi API PIN Cloud:', err);
-    }
-  }
-
-  // 3. Nếu Cloud khớp
-  if(cloudSuccess && cloudUser){
-    saveUserSession(cloudUser);
-    applyUserPermissions();
-    mainModal.hide();
-    toast(`Đăng nhập thành công: ${cloudUser.fullname}!`);
-    pullClassDataFromCloud(false);
-    return;
-  }
-
-  // 4. Cả hai đều không khớp
-  Swal.fire({
-    icon: 'error',
-    title: 'Mã PIN không chính xác',
-    html: `<div class="text-start">
-      <p class="mb-2 text-danger">${cloudErrorMsg || `Mã PIN không đúng cho ${group} của lớp đang chọn.`}</p>
-      <div class="alert alert-warning small py-2 mb-2">
-        Mã PIN mặc định cho Tổ Trưởng là <b>1234</b>.
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-warning w-100" onclick="resetDefaultCredentials()">
-        <i class="fa-solid fa-rotate-left me-1"></i>Khôi phục mã PIN gốc (1234)
-      </button>
-    </div>`
-  });
 }
 
 function resetDefaultCredentials(showNotice = true){
@@ -1558,6 +1626,66 @@ function switchClass(id){
   buildNav();
   renderHeader();
   renderPage();
+}
+
+function renderPage(){
+  chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});
+  chartRefs=[];
+  const root=document.getElementById('appContent');
+  if(!root) return;
+  root.classList.remove('fade-in');
+  void root.offsetWidth;
+  root.classList.add('fade-in');
+  const fn={home:renderHome,classes:renderClasses,accounts:renderAccounts,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;
+  root.innerHTML=fn();
+  setTimeout(afterRender,0);
+}
+
+function afterRender(){
+  if(state.currentPage==='home')drawHomeChart();
+  if(state.currentPage==='stats')drawStatsCharts();
+  if(state.currentPage==='competition')drawCompetitionChart();
+  if(state.currentPage==='wheel')positionWheelBalls();
+  if(state.currentPage==='countdown')updateCountdownUI();
+}
+
+function logTransaction(studentId,amount,reason='Điều chỉnh xu',subject='Ghi chung / Nề nếp'){
+  const s=state.students.find(x=>x.id===studentId);
+  if(!s)return 0;
+  const before=Math.max(0,finiteNum(s.coins,0)),requested=finiteNum(amount,0),after=Math.max(0,before+requested),applied=after-before;
+  if(!applied)return 0;
+  s.coins=after;
+  state.transactions.unshift({id:uid('tx'),classId:s.classId,studentId,studentName:s.name,amount:applied,reason,subject,time:new Date().toISOString()});
+  saveState(false);
+  return applied;
+}
+
+function renderHome(){
+  const ss=classStudents(),att=state.attendance[state.activeClassId+'_'+today()]||{},present=ss.filter(st=>att[st.id]==='present').length,marked=ss.filter(st=>att[st.id]&&att[st.id]!=='unmarked').length,totalCoins=ss.reduce((a,st)=>a+(st.coins||0),0),ws=weekStartDate(today()),rows=competitionRows(ws),avg=rows.length?rows.reduce((a,r)=>a+r.total,0)/rows.length:state.competition.baseScore,top=rows.slice(0,5);
+  const curSess=getClassSession(),sessionBadge=curSess==='morning'?'<span class="badge bg-warning text-dark"><i class="fa-solid fa-sun me-1"></i>Buổi Sáng (Khối 7, 9)</span>':'<span class="badge bg-info text-dark"><i class="fa-solid fa-cloud-sun me-1"></i>Buổi Chiều (Khối 6, 8)</span>';
+  const dow=new Date().getDay(),slotOrder=timeSlots(curSess).filter(s=>s.editable).map(s=>s.id),todayLessons=(dow>=1&&dow<=5)?state.timetable.entries.filter(e=>e.classId===state.activeClassId&&e.day===dow-1).sort((a,b)=>slotOrder.indexOf(a.slot)-slotOrder.indexOf(b.slot)):[];
+  return `
+    <div class="section-head"><div><h2><i class="fa-solid fa-sparkles text-primary me-2"></i>Chào mừng đến lớp ${esc(activeClass().name)}</h2><p>V5 liên thông điểm danh, nề nếp và báo cáo thi đua 100 điểm/tuần.</p></div><div class="d-flex gap-2"><button class="btn btn-outline-primary" onclick="navigate('attendance')"><i class="fa-solid fa-clipboard-check me-1"></i> Điểm danh</button><button class="btn btn-primary" onclick="navigate('competition')"><i class="fa-solid fa-trophy me-1"></i> Thi đua tuần</button></div></div>
+    <div class="stats-grid mb-3"><div class="stat-card"><div class="label">Sĩ số lớp</div><div class="value">${ss.length}</div><small>${activeClass().grade}</small><i class="fa-solid fa-users"></i></div><div class="stat-card"><div class="label">Đi học hôm nay</div><div class="value">${present}/${ss.length}</div><small>${marked?Math.round(present/marked*100):0}% trên ${marked}/${ss.length} HS đã điểm danh</small><i class="fa-solid fa-clipboard-check"></i></div><div class="stat-card"><div class="label">Điểm TB tuần</div><div class="value">${avg.toFixed(1)}</div><small>Điểm gốc ${state.competition.baseScore} · ${weekLabel(ws)}</small><i class="fa-solid fa-trophy"></i></div><div class="stat-card"><div class="label">Tổng xu hiện có</div><div class="value">${totalCoins}</div><small>Xu đổi quà tách riêng điểm thi đua</small><i class="fa-solid fa-coins"></i></div></div>
+    <div class="grid-2 mt-3"><div class="card p-3"><div class="d-flex justify-content-between align-items-center mb-2"><h5 class="fw-bold m-0">Điểm thi đua tuần</h5><span class="badge bg-success">100 điểm gốc</span></div><div style="height:280px"><canvas id="homeChart"></canvas></div></div><div class="card p-3"><h5 class="fw-bold">Top thi đua tuần</h5>${top.length?top.map((r,i)=>competitionRankMini(r,i)).join(''):'<div class="empty">Chưa có học sinh</div>'}</div></div>
+    <div class="grid-equal mt-3"><div class="card p-3"><div class="d-flex justify-content-between align-items-center mb-2"><div><h5 class="fw-bold m-0">Thời khóa biểu hôm nay</h5><div class="mt-1">${sessionBadge}</div></div><button class="btn btn-sm btn-outline-primary" onclick="navigate('timetable')">Xem lịch</button></div>${todayLessons.length?todayLessons.map(l=>{const slMeta=TIMETABLE_SLOT_META.find(s=>s.id===l.slot);const sTime=timetableSlotTime(l.slot,curSess)||l.time;return `<div class="lesson mt-2"><strong>${esc(l.subject)}</strong><div class="text-muted"><span class="badge bg-light text-secondary border me-1">${esc(slMeta?.label||l.slot)}</span>${esc(sTime)}</div></div>`}).join(''):'<div class="empty">Hôm nay chưa có tiết học được xếp.</div>'}</div><div class="card p-3"><h5 class="fw-bold">Thao tác nhanh</h5><div class="d-grid gap-2 mt-2"><button class="btn btn-outline-primary text-start" onclick="navigate('competition')"><i class="fa-solid fa-plus-minus me-2"></i>Ghi nhận cộng/trừ nề nếp</button><button class="btn btn-outline-primary text-start" onclick="navigate('seating')"><i class="fa-solid fa-border-all me-2"></i>Xếp sơ đồ chỗ ngồi</button><button class="btn btn-outline-primary text-start" onclick="navigate('countdown')"><i class="fa-solid fa-stopwatch me-2"></i>Mở đồng hồ đếm ngược</button></div></div></div>
+  `;
+}
+
+function rankRow(s,i){
+  const max=Math.max(1,...classStudents().map(x=>x.coins||0));
+  return `<div class="rank-row"><div class="rank-no">${i+1}</div>${renderAvatar(s,'mini-avatar')}<div><div class="fw-bold">${esc(s.name)}</div><div class="progress-thin"><div style="width:${Math.round((s.coins||0)/max*100)}%"></div></div></div><span class="coin-pill"><i class="fa-solid fa-coins"></i>${s.coins||0}</span></div>`;
+}
+
+function drawHomeChart(){
+  const ctx=document.getElementById('homeChart');
+  if(!ctx)return;
+  if(typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'){
+    const prev = Chart.getChart(ctx);
+    if(prev) { try{ prev.destroy(); }catch(e){} }
+  }
+  const rows=competitionRows(weekStartDate(today())).slice(0,8);
+  chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(13,148,136,.65)',borderColor:'#0d9488',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,suggestedMin:60}}}}));
 }
 
 function renderClasses(){
@@ -3171,7 +3299,16 @@ async function saveGroupPins(e){
     toast('Đã lưu mã PIN cục bộ', 'info');
   }
 }
-function drawCompetitionChart(){const ctx=document.getElementById('competitionChart');if(!ctx)return;const rows=competitionRows().slice(0,15);chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(20,184,166,.72)',borderRadius:7}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{suggestedMin:60}}}}))}
+function drawCompetitionChart(){
+  const ctx=document.getElementById('competitionChart');
+  if(!ctx)return;
+  if(typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'){
+    const prev = Chart.getChart(ctx);
+    if(prev) { try{ prev.destroy(); }catch(e){} }
+  }
+  const rows=competitionRows().slice(0,15);
+  chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(20,184,166,.72)',borderRadius:7}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{suggestedMin:60}}}}));
+}
 async function closeCompetitionWeek(){if(weekClosed())return;const ws=weekStartDate(state.competition.activeWeek),rows=liveCompetitionRows(ws),groups=liveCompetitionGroups(ws);const unmarked=[];for(let i=0;i<5;i++){const date=addDays(ws,i),row=state.attendance[state.activeClassId+'_'+date]||{};classStudents().forEach(st=>{if(!row[st.id]||row[st.id]==='unmarked')unmarked.push(`${date}: ${st.name}`)})}const r=await Swal.fire({icon:unmarked.length?'warning':'question',title:'Chốt thi đua tuần?',html:`<div class="text-start">Tuần <b>${weekLabel(ws)}</b><br>Điểm TB lớp: <b>${rows.length?(rows.reduce((a,x)=>a+x.total,0)/rows.length).toFixed(1):state.competition.baseScore}</b>${unmarked.length?`<br><span class="text-danger">Còn ${unmarked.length} lượt chưa điểm danh. Có thể chốt nhưng các lượt này tính 0 điểm chuyên cần.</span>`:''}<br><small>Sau khi chốt, báo cáo dùng snapshot cố định.</small></div>`,showCancelButton:true,confirmButtonText:'Chốt tuần'});if(!r.isConfirmed)return;const key=competitionSnapshotKey(ws);state.competition.snapshots[key]={classId:state.activeClassId,weekStart:ws,weekEnd:weekEndDate(ws),closedAt:new Date().toISOString(),rows:JSON.parse(JSON.stringify(rows)),groups:JSON.parse(JSON.stringify(groups)),baseScore:state.competition.baseScore,attendanceRules:{...state.competition.attendanceRules}};saveState();renderPage();toast('Đã chốt thi đua tuần')}
 async function reopenCompetitionWeek(){const ws=weekStartDate(state.competition.activeWeek),key=competitionSnapshotKey(ws);if(!state.competition.snapshots[key])return;const r=await Swal.fire({icon:'warning',title:'Mở lại tuần đã chốt?',text:'Snapshot sẽ bị bỏ và báo cáo quay về dữ liệu đang có.',showCancelButton:true,confirmButtonText:'Mở lại'});if(!r.isConfirmed)return;delete state.competition.snapshots[key];saveState();renderPage();toast('Đã mở lại tuần')}
 function openGroupAssignment(){const groups=state.competition.groups,students=classStudents();showModal('Phân tổ lớp '+activeClass().name,`<form onsubmit="saveGroupAssignment(event)"><div class="alert alert-info small">Điểm tổ = trung bình điểm tuần của các thành viên, nên các tổ có sĩ số khác nhau vẫn so sánh công bằng.</div>${students.map((st,i)=>`<div class="row g-2 align-items-center border-bottom py-2"><div class="col-7"><b>${i+1}. ${esc(st.name)}</b></div><div class="col-5"><select class="form-select group-assignment" data-sid="${st.id}">${groups.map(g=>`<option ${state.competition.groupAssignments?.[st.id]===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div></div>`).join('')}<div class="text-end mt-3"><button class="btn btn-primary">Lưu phân tổ</button></div></form>`)}
@@ -3476,7 +3613,36 @@ function saveLink(e,id){e.preventDefault();const d={name:document.getElementById
 function renderStats(){const ss=classStudents(),tx=state.transactions.filter(x=>x.classId===state.activeClassId),total=ss.reduce((a,s)=>a+s.coins,0),plus=tx.filter(x=>x.amount>0).length,minus=tx.filter(x=>x.amount<0).length,male=ss.filter(s=>s.gender==='Nam').length,female=ss.filter(s=>s.gender==='Nữ').length;return `<div class="section-head"><div><h2><i class="fa-solid fa-chart-column text-primary me-2"></i>Thống Kê Điểm Xu & Lịch Sử Tích Đổi</h2><p>Tổng hợp thi đua theo lớp, theo môn và nhật ký cộng/trừ điểm.</p></div><div class="d-flex gap-2"><button class="btn btn-outline-primary" onclick="exportStatsXlsx()"><i class="fa-solid fa-file-excel me-1"></i>Xuất Excel đầy đủ</button><button class="btn btn-primary" onclick="exportStatsPDF()"><i class="fa-solid fa-file-pdf me-1"></i>Xuất PDF</button></div></div><div id="statsReport"><div class="stats-grid"><div class="stat-card"><div class="label">Sĩ số học sinh</div><div class="value">${ss.length}</div><small>${male} Nam · ${female} Nữ</small><i class="fa-solid fa-users"></i></div><div class="stat-card"><div class="label">Tổng xu thi đua</div><div class="value">${total}</div><small>${ss.length?Math.round(total/ss.length):0} xu TB/HS</small><i class="fa-solid fa-coins"></i></div><div class="stat-card"><div class="label">Lượt cộng (+xu)</div><div class="value">${plus}</div><small>Khen thưởng ghi nhận</small><i class="fa-solid fa-plus"></i></div><div class="stat-card"><div class="label">Lượt trừ (-xu)</div><div class="value">${minus}</div><small>Nhắc nhở nề nếp</small><i class="fa-solid fa-minus"></i></div></div><div class="grid-equal mt-3"><div class="card p-3"><h5 class="fw-bold">Bảng Xếp Hạng Xu Thi Đua</h5>${[...ss].sort((a,b)=>b.coins-a.coins).map((s,i)=>rankRow(s,i)).join('')}</div><div class="card p-3"><h5 class="fw-bold">Cơ Cấu Học Sinh & Tỷ Lệ Thi Đua</h5><div style="height:280px"><canvas id="genderChart"></canvas></div></div></div><div class="grid-equal mt-3"><div class="card p-3"><h5 class="fw-bold">Thống kê theo môn học</h5><div style="height:300px"><canvas id="subjectChart"></canvas></div></div><div class="card p-3"><h5 class="fw-bold">Xu theo học sinh</h5><div style="height:300px"><canvas id="coinChart"></canvas></div></div></div></div><div class="card p-3 mt-3"><div class="d-flex justify-content-between flex-wrap gap-2"><h5 class="fw-bold">Lịch sử Cộng / Trừ Chi Tiết (${tx.length})</h5><div class="d-flex gap-2"><select id="txSubjectFilter" class="form-select form-select-sm" onchange="filterTxTable()"><option value="">Tất cả môn</option>${state.subjects.map(x=>`<option>${esc(x)}</option>`).join('')}</select><input id="txSearch" class="form-control form-control-sm" placeholder="Tìm tên / lý do" oninput="filterTxTable()"></div></div><div class="table-responsive"><table class="table mt-2" id="txTable"><thead><tr><th>Thời gian</th><th>Học sinh</th><th>Môn</th><th>Lý do</th><th>Xu</th></tr></thead><tbody>${tx.map(txRow).join('')}</tbody></table></div></div>`}
 function txRow(x){return `<tr data-subject="${esc(x.subject)}" data-search="${esc((x.studentName+' '+x.reason).toLowerCase())}"><td>${new Date(x.time).toLocaleString('vi-VN')}</td><td>${esc(x.studentName)}</td><td>${esc(x.subject)}</td><td>${esc(x.reason)}</td><td><span class="badge ${x.amount>=0?'bg-success':'bg-danger'}">${x.amount>=0?'+':''}${x.amount}</span></td></tr>`}
 function filterTxTable(){const sub=document.getElementById('txSubjectFilter').value,q=document.getElementById('txSearch').value.toLowerCase();document.querySelectorAll('#txTable tbody tr').forEach(r=>r.style.display=(!sub||r.dataset.subject===sub)&&r.dataset.search.includes(q)?'':'none')}
-function drawStatsCharts(){const ss=classStudents(),tx=state.transactions.filter(x=>x.classId===state.activeClassId);const m=ss.filter(s=>s.gender==='Nam').length,f=ss.filter(s=>s.gender==='Nữ').length,o=ss.length-m-f;const g=document.getElementById('genderChart');if(g)chartRefs.push(new Chart(g,{type:'doughnut',data:{labels:['Nam','Nữ','Khác'],datasets:[{data:[m,f,o],backgroundColor:['#0ea5e9','#f472b6','#94a3b8']}]},options:{maintainAspectRatio:false}}));const map={};tx.forEach(x=>map[x.subject]=(map[x.subject]||0)+x.amount);const sc=document.getElementById('subjectChart');if(sc)chartRefs.push(new Chart(sc,{type:'bar',data:{labels:Object.keys(map),datasets:[{label:'Xu ròng',data:Object.values(map),backgroundColor:'rgba(20,184,166,.7)',borderRadius:7}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}}}}));const cc=document.getElementById('coinChart');if(cc)chartRefs.push(new Chart(cc,{type:'line',data:{labels:ss.map(s=>s.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Xu',data:ss.map(s=>s.coins),borderColor:'#0d9488',backgroundColor:'rgba(13,148,136,.12)',fill:true,tension:.3}]},options:{maintainAspectRatio:false}}))}
+function drawStatsCharts(){
+  const ss=classStudents(),tx=state.transactions.filter(x=>x.classId===state.activeClassId);
+  const m=ss.filter(s=>s.gender==='Nam').length,f=ss.filter(s=>s.gender==='Nữ').length,o=ss.length-m-f;
+  const g=document.getElementById('genderChart');
+  if(g){
+    if(typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'){
+      const prev = Chart.getChart(g);
+      if(prev) { try{ prev.destroy(); }catch(e){} }
+    }
+    chartRefs.push(new Chart(g,{type:'doughnut',data:{labels:['Nam','Nữ','Khác'],datasets:[{data:[m,f,o],backgroundColor:['#0ea5e9','#f472b6','#94a3b8']}]},options:{maintainAspectRatio:false}}));
+  }
+  const map={};
+  tx.forEach(x=>map[x.subject]=(map[x.subject]||0)+x.amount);
+  const sc=document.getElementById('subjectChart');
+  if(sc){
+    if(typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'){
+      const prev = Chart.getChart(sc);
+      if(prev) { try{ prev.destroy(); }catch(e){} }
+    }
+    chartRefs.push(new Chart(sc,{type:'bar',data:{labels:Object.keys(map),datasets:[{label:'Xu ròng',data:Object.values(map),backgroundColor:'rgba(20,184,166,.7)',borderRadius:7}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
+  }
+  const cc=document.getElementById('coinChart');
+  if(cc){
+    if(typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'){
+      const prev = Chart.getChart(cc);
+      if(prev) { try{ prev.destroy(); }catch(e){} }
+    }
+    chartRefs.push(new Chart(cc,{type:'line',data:{labels:ss.map(s=>s.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Xu',data:ss.map(s=>s.coins),borderColor:'#0d9488',backgroundColor:'rgba(13,148,136,.12)',fill:true,tension:.3}]},options:{maintainAspectRatio:false}}));
+  }
+}
 function exportStatsXlsx(){const ss=classStudents().map((s,i)=>({STT:i+1,'Học sinh':s.name,'Giới tính':s.gender,'Xu':s.coins}));const tx=state.transactions.filter(x=>x.classId===state.activeClassId).map(x=>({'Thời gian':new Date(x.time).toLocaleString('vi-VN'),'Học sinh':x.studentName,'Môn':x.subject,'Lý do':x.reason,'Xu':x.amount}));const red=state.redemptions.filter(x=>x.classId===state.activeClassId).map(x=>({'Thời gian':new Date(x.time).toLocaleString('vi-VN'),'Học sinh':x.studentName,'Quà':x.rewardName,'Chi phí xu':x.cost}));const ws=weekStartDate(today()),comp=competitionRows(ws).map((r,i)=>({STT:i+1,'Học sinh':r.name,'Tổ':r.group,'Điểm tuần':r.total,'Xếp loại':r.rating}));downloadXlsx([['Xếp hạng xu',ss],['Cộng trừ xu',tx],['Đổi quà',red],['Thi đua tuần',comp]],`bao-cao-${activeClass().name}.xlsx`)}
 async function exportStatsPDF(){const el=document.getElementById('statsReport');if(!el)return;const canvas=await html2canvas(el,{scale:1.5,backgroundColor:'#fff',useCORS:true});const {jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4');const margin=10,pageW=210,pageH=297,contentW=pageW-margin*2,contentH=pageH-margin*2;const pxPerMm=canvas.width/contentW,pagePx=Math.floor(contentH*pxPerMm);let yPx=0,page=0;while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx),slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sliceH;const ctx=slice.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,slice.width,slice.height);ctx.drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);const img=slice.toDataURL('image/jpeg',.92),imgH=sliceH/pxPerMm;if(page>0)pdf.addPage();pdf.addImage(img,'JPEG',margin,margin,contentW,imgH,undefined,'FAST');yPx+=sliceH;page++}pdf.save(`bao-cao-${activeClass().name}.pdf`);toast(`Đã tạo PDF ${page} trang`)}
 function downloadXlsx(sheets,filename){const wb=XLSX.utils.book_new();sheets.forEach(([name,rows])=>{const ws=XLSX.utils.json_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31))});XLSX.writeFile(wb,filename)}
@@ -4786,11 +4952,17 @@ function showGasGuideModal(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
-  mainModal=new bootstrap.Modal(document.getElementById('mainModal'));
-  applyUserPermissions();
-  buildNav();
-  renderHeader();
-  renderPage();
+  const modalEl = document.getElementById('mainModal');
+  if(modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal){
+    mainModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  }
+  if(currentUser){
+    applyUserPermissions();
+  } else {
+    buildNav();
+    renderHeader();
+    renderPage();
+  }
   document.getElementById('hiddenImport').addEventListener('change',e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value=''});
   if(state.settings?.gasApiUrl || localStorage.getItem('gas_api_url')){
     pullClassDataFromCloud(false);
