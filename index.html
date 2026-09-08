@@ -1064,8 +1064,8 @@ function applyUserPermissions(){
     if(currentUser.assignedClass && currentUser.assignedClass !== '*'){
       state.activeClassId = currentUser.assignedClass;
     }
-    // Nếu trang hiện tại là trang admin nhạy cảm, tự động chuyển về trang chấm điểm thi đua
-    const allowedPages = ['home', 'competition', 'timetable', 'rewards'];
+    // Cho phép Tổ trưởng vào: Trang chủ, Chấm điểm tổ, Học sinh lớp, Điểm danh, TKB, Đổi quà
+    const allowedPages = ['home', 'competition', 'students', 'attendance', 'timetable', 'rewards'];
     if(!allowedPages.includes(state.currentPage)){
       state.currentPage = 'competition';
     }
@@ -1073,6 +1073,9 @@ function applyUserPermissions(){
     const found = state.classes.find(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
     if(found){
       state.activeClassId = found.id;
+    }
+    if(state.currentPage === 'accounts'){
+      state.currentPage = 'home';
     }
   }
   buildNav();
@@ -1151,7 +1154,7 @@ function buildNav(){
   const n=classStudents().length;
   let navItems = NAV;
   if(currentUser?.role === 'group_leader'){
-    const allowed = ['home', 'competition', 'timetable', 'rewards'];
+    const allowed = ['home', 'competition', 'students', 'attendance', 'timetable', 'rewards'];
     navItems = NAV.filter(([id]) => allowed.includes(id));
   } else if(currentUser?.role !== 'admin'){
     navItems = NAV.filter(([id]) => id !== 'accounts');
@@ -1160,6 +1163,9 @@ function buildNav(){
     let displayLabel = label;
     if(currentUser?.role === 'group_leader' && id === 'competition'){
       displayLabel = 'Chấm điểm tổ';
+    }
+    if(currentUser?.role === 'group_leader' && id === 'students'){
+      displayLabel = 'Học sinh cả lớp';
     }
     return `<a class="nav-link ${state.currentPage===id?'active':''}" data-page="${id}" onclick="navigate('${id}')"><i class="fa-solid ${ic}"></i><span>${displayLabel}</span>${b==='count'?`<span class="mini-badge new">${n}</span>`:b?`<span class="mini-badge ${b==='NEW'?'new':b==='ADMIN'?'bg-danger text-white':''}">${b}</span>`:''}</a>`;
   }).join('');
@@ -1206,7 +1212,7 @@ function navigate(page){
   if(page === 'accounts' && currentUser?.role !== 'admin'){
     return toast('Chỉ Quản trị viên (Admin) mới có quyền truy cập mục Quản trị GVCN', 'warning');
   }
-  if(currentUser?.role === 'group_leader' && !['home', 'competition', 'timetable', 'rewards'].includes(page)){
+  if(currentUser?.role === 'group_leader' && !['home', 'competition', 'students', 'attendance', 'timetable', 'rewards'].includes(page)){
     return toast('Tổ trưởng không có quyền truy cập mục này', 'warning');
   }
   if(state.currentPage==='noise'&&page!=='noise') stopMic();
@@ -1218,67 +1224,100 @@ function navigate(page){
   document.getElementById('sidebar').classList.remove('open');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function switchClass(id){state.activeClassId=id;state.wheelExcluded=[];state.filmExcluded=[];saveState();buildNav();renderHeader();renderPage()}
-function renderPage(){chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});chartRefs=[];const root=document.getElementById('appContent');root.classList.remove('fade-in');void root.offsetWidth;root.classList.add('fade-in');const fn={home:renderHome,classes:renderClasses,accounts:renderAccounts,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;root.innerHTML=fn(); setTimeout(afterRender,0)}
-function afterRender(){if(state.currentPage==='home')drawHomeChart();if(state.currentPage==='stats')drawStatsCharts();if(state.currentPage==='competition')drawCompetitionChart();if(state.currentPage==='wheel')positionWheelBalls();if(state.currentPage==='countdown')updateCountdownUI()}
-function logTransaction(studentId,amount,reason='Điều chỉnh xu',subject='Ghi chung / Nề nếp'){const s=state.students.find(x=>x.id===studentId);if(!s)return 0;const before=Math.max(0,finiteNum(s.coins,0)),requested=finiteNum(amount,0),after=Math.max(0,before+requested),applied=after-before;if(!applied)return 0;s.coins=after;state.transactions.unshift({id:uid('tx'),classId:s.classId,studentId,studentName:s.name,amount:applied,reason,subject,time:new Date().toISOString()});saveState(false);return applied}
-function renderHome(){const ss=classStudents(),att=state.attendance[state.activeClassId+'_'+today()]||{},present=ss.filter(st=>att[st.id]==='present').length,marked=ss.filter(st=>att[st.id]&&att[st.id]!=='unmarked').length,totalCoins=ss.reduce((a,st)=>a+(st.coins||0),0),ws=weekStartDate(today()),rows=competitionRows(ws),avg=rows.length?rows.reduce((a,r)=>a+r.total,0)/rows.length:state.competition.baseScore,top=rows.slice(0,5);const curSess=getClassSession(),sessionBadge=curSess==='morning'?'<span class="badge bg-warning text-dark"><i class="fa-solid fa-sun me-1"></i>Buổi Sáng (Khối 7, 9)</span>':'<span class="badge bg-info text-dark"><i class="fa-solid fa-cloud-sun me-1"></i>Buổi Chiều (Khối 6, 8)</span>';const dow=new Date().getDay(),slotOrder=timeSlots(curSess).filter(s=>s.editable).map(s=>s.id),todayLessons=(dow>=1&&dow<=5)?state.timetable.entries.filter(e=>e.classId===state.activeClassId&&e.day===dow-1).sort((a,b)=>slotOrder.indexOf(a.slot)-slotOrder.indexOf(b.slot)):[];return `
-<div class="section-head"><div><h2><i class="fa-solid fa-sparkles text-primary me-2"></i>Chào mừng đến lớp ${esc(activeClass().name)}</h2><p>V5 liên thông điểm danh, nề nếp và báo cáo thi đua 100 điểm/tuần.</p></div><div class="d-flex gap-2"><button class="btn btn-outline-primary" onclick="navigate('attendance')"><i class="fa-solid fa-clipboard-check me-1"></i> Điểm danh</button><button class="btn btn-primary" onclick="navigate('competition')"><i class="fa-solid fa-trophy me-1"></i> Thi đua tuần</button></div></div>
-<div class="stats-grid mb-3"><div class="stat-card"><div class="label">Sĩ số lớp</div><div class="value">${ss.length}</div><small>${activeClass().grade}</small><i class="fa-solid fa-users"></i></div><div class="stat-card"><div class="label">Đi học hôm nay</div><div class="value">${present}/${ss.length}</div><small>${marked?Math.round(present/marked*100):0}% trên ${marked}/${ss.length} HS đã điểm danh</small><i class="fa-solid fa-clipboard-check"></i></div><div class="stat-card"><div class="label">Điểm TB tuần</div><div class="value">${avg.toFixed(1)}</div><small>Điểm gốc ${state.competition.baseScore} · ${weekLabel(ws)}</small><i class="fa-solid fa-trophy"></i></div><div class="stat-card"><div class="label">Tổng xu hiện có</div><div class="value">${totalCoins}</div><small>Xu đổi quà tách riêng điểm thi đua</small><i class="fa-solid fa-coins"></i></div></div>
-<div class="grid-2 mt-3"><div class="card p-3"><div class="d-flex justify-content-between align-items-center mb-2"><h5 class="fw-bold m-0">Điểm thi đua tuần</h5><span class="badge bg-success">100 điểm gốc</span></div><div style="height:280px"><canvas id="homeChart"></canvas></div></div><div class="card p-3"><h5 class="fw-bold">Top thi đua tuần</h5>${top.length?top.map((r,i)=>competitionRankMini(r,i)).join(''):'<div class="empty">Chưa có học sinh</div>'}</div></div>
-<div class="grid-equal mt-3"><div class="card p-3"><div class="d-flex justify-content-between align-items-center mb-2"><div><h5 class="fw-bold m-0">Thời khóa biểu hôm nay</h5><div class="mt-1">${sessionBadge}</div></div><button class="btn btn-sm btn-outline-primary" onclick="navigate('timetable')">Xem lịch</button></div>${todayLessons.length?todayLessons.map(l=>{const slMeta=TIMETABLE_SLOT_META.find(s=>s.id===l.slot);const sTime=timetableSlotTime(l.slot,curSess)||l.time;return `<div class="lesson mt-2"><strong>${esc(l.subject)}</strong><div class="text-muted"><span class="badge bg-light text-secondary border me-1">${esc(slMeta?.label||l.slot)}</span>${esc(sTime)}</div></div>`}).join(''):'<div class="empty">Hôm nay chưa có tiết học được xếp.</div>'}</div><div class="card p-3"><h5 class="fw-bold">Thao tác nhanh</h5><div class="d-grid gap-2 mt-2"><button class="btn btn-outline-primary text-start" onclick="navigate('competition')"><i class="fa-solid fa-plus-minus me-2"></i>Ghi nhận cộng/trừ nề nếp</button><button class="btn btn-outline-primary text-start" onclick="navigate('seating')"><i class="fa-solid fa-border-all me-2"></i>Xếp sơ đồ chỗ ngồi</button><button class="btn btn-outline-primary text-start" onclick="navigate('countdown')"><i class="fa-solid fa-stopwatch me-2"></i>Mở đồng hồ đếm ngược</button></div></div></div>`}
-function rankRow(s,i){const max=Math.max(1,...classStudents().map(x=>x.coins||0));return `<div class="rank-row"><div class="rank-no">${i+1}</div>${renderAvatar(s,'mini-avatar')}<div><div class="fw-bold">${esc(s.name)}</div><div class="progress-thin"><div style="width:${Math.round((s.coins||0)/max*100)}%"></div></div></div><span class="coin-pill"><i class="fa-solid fa-coins"></i>${s.coins||0}</span></div>`}
-function drawHomeChart(){const ctx=document.getElementById('homeChart');if(!ctx)return;const rows=competitionRows(weekStartDate(today())).slice(0,8);chartRefs.push(new Chart(ctx,{type:'bar',data:{labels:rows.map(r=>r.name.split(' ').slice(-2).join(' ')),datasets:[{label:'Điểm tuần',data:rows.map(r=>r.total),backgroundColor:'rgba(13,148,136,.65)',borderColor:'#0d9488',borderWidth:1,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,suggestedMin:60}}}}))}
+function switchClass(id){
+  if (currentUser?.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*' && currentUser.assignedClass !== id) {
+    const myCls = state.classes.find(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
+    return toast(`Bạn chỉ có quyền làm việc trên lớp chủ nhiệm ${myCls?.name || ''}!`, 'warning');
+  }
+  if (currentUser?.role === 'group_leader' && currentUser.assignedClass && currentUser.assignedClass !== '*' && currentUser.assignedClass !== id) {
+    return toast('Tài khoản Tổ trưởng chỉ hoạt động trong lớp của mình!', 'warning');
+  }
+  state.activeClassId = id;
+  state.wheelExcluded = [];
+  state.filmExcluded = [];
+  saveState();
+  buildNav();
+  renderHeader();
+  renderPage();
+}
+
 function renderClasses(){
+  const isAdmin = currentUser?.role === 'admin';
+  const isTeacher = currentUser?.role === 'teacher';
+  const isLeader = currentUser?.role === 'group_leader';
+
   return `
     <div class="section-head">
       <div>
         <h2><i class="fa-solid fa-school text-primary me-2"></i>Quản lý Danh sách Lớp học Toàn Trường</h2>
-        <p>Nạp nhanh danh sách lớp bằng file Excel hoặc thêm từng lớp riêng lẻ.</p>
+        <p>${isAdmin ? 'Nạp nhanh danh sách lớp bằng file Excel hoặc thêm từng lớp riêng lẻ.' : 'Theo dõi danh sách lớp học và thông tin phân công chủ nhiệm toàn trường.'}</p>
       </div>
-      <div class="d-flex gap-2 flex-wrap">
-        ${currentUser?.role === 'admin' ? '<button class="btn btn-outline-primary" onclick="navigate(\'accounts\')"><i class="fa-solid fa-user-shield me-1"></i>Quản trị GVCN toàn trường</button>' : ''}
-        <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ GVCN</button>
-        <button class="btn btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-file-arrow-down me-1"></i>Tải mẫu Excel</button>
-        <button class="btn btn-success" onclick="openImportClassesModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập lớp từ Excel</button>
-        <button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        ${isAdmin ? `
+          <button class="btn btn-outline-primary" onclick="navigate('accounts')"><i class="fa-solid fa-user-shield me-1"></i>Quản trị GVCN toàn trường</button>
+          <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ GVCN</button>
+          <button class="btn btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-file-arrow-down me-1"></i>Tải mẫu Excel</button>
+          <button class="btn btn-success" onclick="openImportClassesModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập lớp từ Excel</button>
+          <button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button>
+        ` : `
+          <span class="badge bg-primary-subtle text-primary border p-2 fs-6">
+            <i class="fa-solid fa-chalkboard-user me-1"></i>Lớp chủ nhiệm được phân công: <b>${esc(activeClass().name)}</b>
+          </span>
+        `}
       </div>
     </div>
     <div class="student-grid">
-      ${state.classes.map(c=>`
-        <div class="card hover-lift p-3">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="avatar">${esc(c.name)}</div>
-            <div class="d-flex flex-column align-items-end gap-1">
-              ${c.id===state.activeClassId?'<span class="badge bg-success">Lớp đang chọn</span>':''}
-              <span class="badge ${getClassSession(c.id)==='morning'?'bg-warning text-dark':'bg-info text-dark'}">
-                ${getClassSession(c.id)==='morning'?'☀️ Sáng (K7, 9)':'🌤️ Chiều (K6, 8)'}
-              </span>
-            </div>
-          </div>
-          <h4 class="fw-bold mt-3 mb-1">${esc(c.name)}</h4>
-          <div class="text-muted small">${esc(c.grade)} · Năm học ${esc(c.year)}</div>
-          <div class="mt-2 py-1 px-2 rounded bg-light border text-truncate small" title="${esc(c.teacherName || 'Chưa phân công')}">
-            <i class="fa-solid fa-user-tie text-primary me-1"></i>GVCN: <b>${esc(c.teacherName || 'Chưa phân công')}</b>
-          </div>
-          <div class="d-flex justify-content-between align-items-center mt-2">
-            <div class="coin-pill m-0"><i class="fa-solid fa-users"></i>${classStudentsFor(c.id).length} học sinh</div>
-            ${currentUser?.role === 'admin' ? `
-              <div class="btn-group btn-group-sm">
-                <button class="btn btn-sm btn-outline-primary py-0 px-2" title="Phân công GVCN cho lớp" onclick="openAssignTeacherModal('', '${c.id}')"><i class="fa-solid fa-user-gear me-1"></i>Phân công</button>
-                <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="Cấp / Đổi mật khẩu GVCN" onclick="openClassTeacherPasswordModal('${c.id}')"><i class="fa-solid fa-key"></i></button>
+      ${state.classes.map(c => {
+        const isMyClass = isAdmin || (currentUser?.assignedClass === c.id || currentUser?.assignedClass === c.name);
+        const cardStyle = isMyClass ? (isTeacher || isLeader ? 'border: 2px solid #0d9488;' : '') : 'opacity: 0.5; filter: grayscale(40%);';
+
+        return `
+          <div class="card hover-lift p-3" style="${cardStyle}">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="avatar">${esc(c.name)}</div>
+              <div class="d-flex flex-column align-items-end gap-1">
+                ${c.id === state.activeClassId ? '<span class="badge bg-success">Lớp đang chọn</span>' : ''}
+                ${!isAdmin && isMyClass ? '<span class="badge bg-primary"><i class="fa-solid fa-user-check me-1"></i>Lớp của bạn</span>' : ''}
+                ${!isMyClass ? '<span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Lớp khác (Vô tác dụng)</span>' : ''}
+                <span class="badge ${getClassSession(c.id)==='morning'?'bg-warning text-dark':'bg-info text-dark'}">
+                  ${getClassSession(c.id)==='morning'?'☀️ Sáng (K7, 9)':'🌤️ Chiều (K6, 8)'}
+                </span>
               </div>
-            ` : ''}
-          </div>
-          <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-            <button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')"><i class="fa-solid fa-door-open me-1"></i>Vào không gian lớp</button>
-            <div>
-              <button class="icon-btn d-inline-grid" title="Chỉnh sửa lớp" onclick="openClassModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
-              <button class="icon-btn d-inline-grid text-danger" title="Xóa lớp" onclick="deleteClass('${c.id}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <h4 class="fw-bold mt-3 mb-1">${esc(c.name)}</h4>
+            <div class="text-muted small">${esc(c.grade)} · Năm học ${esc(c.year)}</div>
+            <div class="mt-2 py-1 px-2 rounded bg-light border text-truncate small" title="${esc(c.teacherName || 'Chưa phân công')}">
+              <i class="fa-solid fa-user-tie text-primary me-1"></i>GVCN: <b>${esc(c.teacherName || 'Chưa phân công')}</b>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+              <div class="coin-pill m-0"><i class="fa-solid fa-users"></i>${classStudentsFor(c.id).length} học sinh</div>
+              ${isAdmin ? `
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-sm btn-outline-primary py-0 px-2" title="Phân công GVCN cho lớp" onclick="openAssignTeacherModal('', '${c.id}')"><i class="fa-solid fa-user-gear me-1"></i>Phân công</button>
+                  <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="Cấp / Đổi mật khẩu GVCN" onclick="openClassTeacherPasswordModal('${c.id}')"><i class="fa-solid fa-key"></i></button>
+                </div>
+              ` : ''}
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+              ${isMyClass ? `
+                <button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')"><i class="fa-solid fa-door-open me-1"></i>Vào không gian lớp</button>
+              ` : `
+                <button class="btn btn-sm btn-secondary" disabled title="Bạn không được phân công lớp này"><i class="fa-solid fa-lock me-1"></i>Không thể vào</button>
+              `}
+              <div>
+                ${isAdmin ? `
+                  <button class="icon-btn d-inline-grid" title="Chỉnh sửa lớp" onclick="openClassModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
+                  <button class="icon-btn d-inline-grid text-danger" title="Xóa lớp" onclick="deleteClass('${c.id}')"><i class="fa-solid fa-trash"></i></button>
+                ` : isMyClass && isTeacher ? `
+                  <button class="icon-btn d-inline-grid" title="Xem / Sửa ca học lớp" onclick="openClassModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
+                ` : `
+                  <span class="text-muted small"><i class="fa-solid fa-ban"></i></span>
+                `}
+              </div>
             </div>
           </div>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 }
@@ -1669,17 +1708,26 @@ function maskCCCD(c){
 
 function renderStudents(){
   const ss = classStudents().sort((a,b)=>(a.stt||0)-(b.stt||0));
+  const isLeader = currentUser?.role === 'group_leader';
+  const myGroup = currentUser?.assignedGroup || 'Tổ 1';
+
   return `<div class="section-head">
     <div>
-      <h2><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Danh sách ${esc(activeClass().name)} <span class="fs-6 text-muted">${ss.length} học sinh</span></h2>
-      <p>Quản lý số CCCD, ngày sinh, thưởng xu thi đua và nhập danh sách tự động từ Excel.</p>
+      <h2><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Danh sách học sinh ${esc(activeClass().name)} <span class="fs-6 text-muted">${ss.length} học sinh</span></h2>
+      <p>${isLeader ? `Tổ trưởng theo dõi hồ sơ thành viên trong <b>${esc(myGroup)}</b> và toàn bộ học sinh lớp.` : 'Quản lý số CCCD, ngày sinh, thưởng xu thi đua và nhập danh sách tự động từ Excel.'}</p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-      <button class="btn btn-outline-success" onclick="openExcelImportModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập từ Excel</button>
-      <button class="btn btn-outline-secondary" onclick="downloadExcelTemplate()"><i class="fa-solid fa-download me-1"></i>Tải mẫu Excel</button>
-      <button class="btn btn-outline-primary" onclick="navigate('wheel')"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Vòng quay</button>
-      <button class="btn btn-outline-primary" onclick="resetCoins()"><i class="fa-solid fa-rotate-left me-1"></i>Đặt xu về 0</button>
-      <button class="btn btn-primary" onclick="openStudentModal()"><i class="fa-solid fa-plus me-1"></i>Thêm học sinh</button>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      ${isLeader ? `
+        <span class="badge bg-primary-subtle text-primary border p-2"><i class="fa-solid fa-users me-1"></i>Bạn là Tổ Trưởng: <b>${esc(myGroup)}</b></span>
+        <button class="btn btn-outline-primary btn-sm" onclick="filterStudentsByGroup('my')"><i class="fa-solid fa-user-check me-1"></i>Xem thành viên ${esc(myGroup)}</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="filterStudentsByGroup('all')"><i class="fa-solid fa-users me-1"></i>Xem tất cả (${ss.length} HS)</button>
+      ` : `
+        <button class="btn btn-outline-success" onclick="openExcelImportModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập từ Excel</button>
+        <button class="btn btn-outline-secondary" onclick="downloadExcelTemplate()"><i class="fa-solid fa-download me-1"></i>Tải mẫu Excel</button>
+        <button class="btn btn-outline-primary" onclick="navigate('wheel')"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Vòng quay</button>
+        <button class="btn btn-outline-primary" onclick="resetCoins()"><i class="fa-solid fa-rotate-left me-1"></i>Đặt xu về 0</button>
+        <button class="btn btn-primary" onclick="openStudentModal()"><i class="fa-solid fa-plus me-1"></i>Thêm học sinh</button>
+      `}
     </div>
   </div>
   <div class="mb-3">
@@ -1689,31 +1737,63 @@ function renderStudents(){
 }
 
 function studentCard(s){
-  return `<div class="card hover-lift student-card" data-name="${esc((s.name+' '+(s.cccd||'')+' '+(s.dob||'')).toLowerCase())}">
+  const isLeader = currentUser?.role === 'group_leader';
+  const myGroup = currentUser?.assignedGroup || 'Tổ 1';
+  const sGroup = state.competition?.groupAssignments?.[s.id] || '';
+  const isMyGroup = isLeader && sGroup === myGroup;
+  const isOtherGroup = isLeader && sGroup !== myGroup;
+
+  return `<div class="card hover-lift student-card" data-group="${esc(sGroup)}" data-name="${esc((s.name+' '+(s.cccd||'')+' '+(s.dob||'')).toLowerCase())}" style="${isMyGroup ? 'border: 2px solid #0d9488;' : isOtherGroup ? 'opacity: 0.85;' : ''}">
     <div class="student-top">
       <div class="position-relative">
         ${renderAvatar(s,'student-avatar')}
         <span class="badge bg-dark position-absolute top-0 start-0 rounded-circle" style="transform:translate(-25%, -25%); font-size:.7rem; width:22px; height:22px; display:grid; place-items:center;">${s.stt||'-'}</span>
       </div>
       <div class="flex-grow-1 min-width-0">
-        <div class="student-name text-truncate">${esc(s.name)} ${s.favorite?'<i class="fa-solid fa-star text-warning" title="Yêu thích"></i>':''}</div>
+        <div class="student-name text-truncate">
+          ${esc(s.name)} ${s.favorite?'<i class="fa-solid fa-star text-warning" title="Yêu thích"></i>':''}
+        </div>
         <div class="text-muted small">
           <span>${esc(s.gender||'Chưa rõ')}</span> · <span>${esc(s.dob||'--/--/----')}</span>
         </div>
         <div class="small mt-1" style="font-size:.75rem; color:#475569;" title="Căn cước công dân / Mã định danh cá nhân">
           <i class="fa-solid fa-id-card me-1 text-primary"></i>CCCD: <span class="fw-bold font-monospace">${maskCCCD(s.cccd)}</span>
         </div>
-        <span class="coin-pill mt-1"><i class="fa-solid fa-coins"></i>${s.coins||0} xu</span>
+        <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+          <span class="coin-pill m-0"><i class="fa-solid fa-coins"></i>${s.coins||0} xu</span>
+          ${sGroup ? `<span class="badge ${isMyGroup ? 'bg-primary' : 'bg-secondary-subtle text-secondary border'}">${esc(sGroup)}</span>` : ''}
+        </div>
       </div>
     </div>
     <div class="student-actions">
-      <button class="icon-btn plus-btn" title="Cộng 1 xu" onclick="adjustCoins('${s.id}',1)"><i class="fa-solid fa-plus"></i></button>
-      <button class="icon-btn minus-btn" title="Trừ 1 xu" onclick="adjustCoins('${s.id}',-1)"><i class="fa-solid fa-minus"></i></button>
-      <button class="icon-btn" title="Đánh dấu yêu thích" onclick="toggleFavorite('${s.id}')"><i class="fa-${s.favorite?'solid':'regular'} fa-star"></i></button>
-      <button class="icon-btn" title="Sửa thông tin học sinh" onclick="openStudentModal('${s.id}')"><i class="fa-solid fa-pen"></i></button>
-      <button class="icon-btn text-danger" title="Xóa học sinh" onclick="deleteStudent('${s.id}')"><i class="fa-solid fa-trash"></i></button>
+      ${isLeader ? (
+        isMyGroup ? `
+          <span class="badge bg-primary-subtle text-primary border py-1 px-2 small"><i class="fa-solid fa-user-check me-1"></i>Thành viên tổ bạn</span>
+          <button class="icon-btn" title="Đánh dấu yêu thích" onclick="toggleFavorite('${s.id}')"><i class="fa-${s.favorite?'solid':'regular'} fa-star"></i></button>
+        ` : `
+          <span class="badge bg-light text-muted border py-1 px-2 small" title="Bạn chỉ có quyền xem học sinh tổ khác, không thể thao tác"><i class="fa-solid fa-lock me-1"></i>Tổ khác (Vô tác dụng)</span>
+        `
+      ) : `
+        <button class="icon-btn plus-btn" title="Cộng 1 xu" onclick="adjustCoins('${s.id}',1)"><i class="fa-solid fa-plus"></i></button>
+        <button class="icon-btn minus-btn" title="Trừ 1 xu" onclick="adjustCoins('${s.id}',-1)"><i class="fa-solid fa-minus"></i></button>
+        <button class="icon-btn" title="Đánh dấu yêu thích" onclick="toggleFavorite('${s.id}')"><i class="fa-${s.favorite?'solid':'regular'} fa-star"></i></button>
+        <button class="icon-btn" title="Sửa thông tin học sinh" onclick="openStudentModal('${s.id}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn text-danger" title="Xóa học sinh" onclick="deleteStudent('${s.id}')"><i class="fa-solid fa-trash"></i></button>
+      `}
     </div>
   </div>`;
+}
+
+function filterStudentsByGroup(mode){
+  const myGroup = currentUser?.assignedGroup || 'Tổ 1';
+  document.querySelectorAll('#studentGrid .student-card').forEach(x => {
+    const grp = x.getAttribute('data-group') || '';
+    if (mode === 'my') {
+      x.style.display = grp === myGroup ? '' : 'none';
+    } else {
+      x.style.display = '';
+    }
+  });
 }
 
 function filterStudents(q){
@@ -2070,9 +2150,91 @@ async function confirmExcelImport(){
 function attKey(){return state.activeClassId+'_'+(document.getElementById('attDate')?.value||state.attendanceDate||today())}
 function changeAttendanceDate(v){state.attendanceDate=v;saveState(false);renderPage()}
 function attendanceStatusInfo(status){return ({unmarked:{label:'Chưa điểm danh',icon:'fa-circle-question'},present:{label:'Có mặt',icon:'fa-circle-check'},late:{label:'Đi muộn',icon:'fa-clock'},excused:{label:'Có phép',icon:'fa-envelope-open-text'},unexcused:{label:'Không phép',icon:'fa-circle-xmark'}})[status]||{label:'Chưa điểm danh',icon:'fa-circle-question'}}
-function renderAttendance(){const ss=classStudents(),date=state.attendanceDate||today(),att=state.attendance[state.activeClassId+'_'+date]||{},ar=state.competition.attendanceRules;return `<div class="section-head"><div><h2><i class="fa-solid fa-clipboard-check text-primary me-2"></i>Điểm danh lớp ${esc(activeClass().name)}</h2><p>Mỗi trạng thái được dùng trực tiếp khi tính điểm thi đua tuần; không tạo bản ghi trùng.</p></div><div class="d-flex gap-2 flex-wrap"><input id="attDate" type="date" class="form-control" style="width:160px" value="${date}" onchange="changeAttendanceDate(this.value)"><button class="btn btn-outline-primary" onclick="exportAttendance()"><i class="fa-solid fa-file-excel me-1"></i>Xuất Excel</button><button class="btn btn-primary" onclick="saveState();toast('Đã lưu điểm danh')"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu điểm danh</button></div></div>${attendanceSummary(att,ss)}<div class="alert alert-info small"><b>Quy đổi thi đua:</b> Có mặt 0đ · Đi muộn ${ar.late>=0?'+':''}${ar.late}đ · Có phép ${ar.excused>=0?'+':''}${ar.excused}đ · Không phép ${ar.unexcused>=0?'+':''}${ar.unexcused}đ. Có thể chỉnh tại mục <b>Thi đua tuần → Cấu hình</b>.</div><div class="card p-3 mt-3"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><div class="fw-bold text-primary">Danh sách điểm danh</div><div class="small text-muted">Chưa điểm danh = 0 điểm, không tự coi là có mặt.</div></div><div class="small text-muted">Sĩ số: <strong>${ss.length}</strong> học sinh</div></div><div class="attendance-grid">${ss.map((st,i)=>{const status=att[st.id]||'unmarked',info=attendanceStatusInfo(status);return `<div class="attendance-card"><div class="attendance-card-head"><div class="attendance-stt">${i+1}</div>${renderAvatar(st,'mini-avatar')}<div class="attendance-info"><div class="attendance-name">${esc(st.name)}</div><div class="attendance-meta">${esc(activeClass().name)}${st.gender?` · ${esc(st.gender)}`:''}</div><div class="status-pill ${status}"><i class="fa-solid ${info.icon}"></i>${info.label}${status!=='unmarked'&&status!=='present'?` · ${(ar[status]||0)>=0?'+':''}${ar[status]||0}đ`:''}</div></div></div><div class="attendance-actions">${[['present','Có mặt','fa-circle-check'],['late',`Đi muộn (${ar.late>=0?'+':''}${ar.late}đ)`,'fa-clock'],['excused',`Có phép (${ar.excused>=0?'+':''}${ar.excused}đ)`,'fa-envelope-open-text'],['unexcused',`Không phép (${ar.unexcused>=0?'+':''}${ar.unexcused}đ)`,'fa-circle-xmark']].map(([k,l,icon])=>`<button class="attendance-btn ${k} ${status===k?'active':''}" onclick="setAttendance('${st.id}','${k}')"><i class="fa-solid ${icon}"></i>${l}</button>`).join('')}</div><div class="attendance-note">${st.note?esc(st.note):'Điểm chuyên cần của ngày này tự đi vào báo cáo tuần.'}</div></div>`}).join('')}</div></div>`}
+function renderAttendance(){
+  const ss = classStudents().sort((a,b)=>(a.stt||0)-(b.stt||0));
+  const date = state.attendanceDate || today();
+  const att = state.attendance[state.activeClassId + '_' + date] || {};
+  const ar = state.competition.attendanceRules;
+  const isLeader = currentUser?.role === 'group_leader';
+  const myGroup = currentUser?.assignedGroup || 'Tổ 1';
+  const isAdminOrTeacher = currentUser?.role === 'admin' || currentUser?.role === 'teacher';
+
+  return `
+    <div class="section-head">
+      <div>
+        <h2><i class="fa-solid fa-clipboard-check text-primary me-2"></i>Điểm danh lớp ${esc(activeClass().name)}</h2>
+        <p>${isLeader ? `Tổ trưởng chỉ thao tác điểm danh các bạn thuộc <b>${esc(myGroup)}</b>. Thành viên tổ khác ở chế độ chỉ xem.` : 'Mỗi trạng thái được dùng trực tiếp khi tính điểm thi đua tuần; không tạo bản ghi trùng.'}</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <input id="attDate" type="date" class="form-control" style="width:160px" value="${date}" onchange="changeAttendanceDate(this.value)">
+        <button class="btn btn-outline-primary" onclick="exportAttendance()"><i class="fa-solid fa-file-excel me-1"></i>Xuất Excel</button>
+        ${isAdminOrTeacher ? '<button class="btn btn-primary" onclick="saveState();toast(\'Đã lưu điểm danh\')"><i class="fa-solid fa-floppy-disk me-1"></i>Lưu điểm danh</button>' : ''}
+        ${isLeader ? `<span class="badge bg-primary fs-6 px-3 py-2"><i class="fa-solid fa-user-check me-1"></i>${esc(myGroup)}</span>` : ''}
+      </div>
+    </div>
+    ${attendanceSummary(att, ss)}
+    <div class="alert alert-info small">
+      <b>Quy đổi thi đua:</b> Có mặt 0đ · Đi muộn ${ar.late>=0?'+':''}${ar.late}đ · Có phép ${ar.excused>=0?'+':''}${ar.excused}đ · Không phép ${ar.unexcused>=0?'+':''}${ar.unexcused}đ.
+      ${isLeader ? `<b>Lưu ý:</b> Bạn là Tổ trưởng ${esc(myGroup)}, nút điểm danh của các bạn tổ khác sẽ bị khóa (vô tác dụng) để bảo vệ nề nếp.` : ''}
+    </div>
+    <div class="card p-3 mt-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <div class="fw-bold text-primary">Danh sách điểm danh toàn lớp</div>
+          <div class="small text-muted">Chưa điểm danh = 0 điểm, không tự coi là có mặt.</div>
+        </div>
+        <div class="small text-muted">Sĩ số: <strong>${ss.length}</strong> học sinh</div>
+      </div>
+      <div class="attendance-grid">
+        ${ss.map((st, i) => {
+          const status = att[st.id] || 'unmarked';
+          const info = attendanceStatusInfo(status);
+          const stGroup = state.competition?.groupAssignments?.[st.id] || '';
+          const canEdit = !isLeader || stGroup === myGroup;
+
+          return `
+            <div class="attendance-card ${isLeader && stGroup === myGroup ? 'border-primary border-2 bg-light' : ''}">
+              <div class="attendance-card-head">
+                <div class="attendance-stt">${i + 1}</div>
+                ${renderAvatar(st, 'mini-avatar')}
+                <div class="attendance-info">
+                  <div class="attendance-name">
+                    ${esc(st.name)}
+                    ${stGroup ? `<span class="badge ${stGroup === myGroup ? 'bg-primary' : 'bg-secondary-subtle text-secondary border'} ms-1" style="font-size:.65rem">${esc(stGroup)}</span>` : ''}
+                  </div>
+                  <div class="attendance-meta">${esc(activeClass().name)}${st.gender ? ` · ${esc(st.gender)}` : ''}</div>
+                  <div class="status-pill ${status}">
+                    <i class="fa-solid ${info.icon}"></i>${info.label}${status !== 'unmarked' && status !== 'present' ? ` · ${(ar[status]||0)>=0?'+':''}${ar[status]||0}đ` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="attendance-actions">
+                ${[['present','Có mặt','fa-circle-check'],['late',`Đi muộn (${ar.late>=0?'+':''}${ar.late}đ)`,'fa-clock'],['excused',`Có phép (${ar.excused>=0?'+':''}${ar.excused}đ)`,'fa-envelope-open-text'],['unexcused',`Không phép (${ar.unexcused>=0?'+':''}${ar.unexcused}đ)`,'fa-circle-xmark']].map(([k,l,icon]) => `
+                  <button class="attendance-btn ${k} ${status===k?'active':''}" 
+                    ${canEdit ? `onclick="setAttendance('${st.id}','${k}')"` : `disabled style="opacity:0.45; cursor:not-allowed;" title="Bạn chỉ có thể xem trạng thái của thành viên tổ khác"`}>
+                    <i class="fa-solid ${icon}"></i>${l}
+                  </button>
+                `).join('')}
+              </div>
+              <div class="attendance-note">
+                ${!canEdit ? '<span class="text-muted small"><i class="fa-solid fa-lock me-1"></i>Tổ khác (Chỉ xem / Vô tác dụng)</span>' : (st.note ? esc(st.note) : 'Điểm chuyên cần của ngày này tự đi vào báo cáo tuần.')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
 function attendanceSummary(att,ss){const counts={unmarked:0,present:0,late:0,excused:0,unexcused:0};ss.forEach(s=>counts[att[s.id]||'unmarked']++);return `<div class="attendance-summary"><div class="att-box unmarked"><strong>${counts.unmarked}</strong>Chưa điểm danh</div><div class="att-box present"><strong>${counts.present}</strong>Có mặt</div><div class="att-box late"><strong>${counts.late}</strong>Đi muộn</div><div class="att-box excused"><strong>${counts.excused}</strong>Có phép</div><div class="att-box unexcused"><strong>${counts.unexcused}</strong>Không phép</div></div>`}
 function setAttendance(id,status){
+  if (currentUser?.role === 'group_leader') {
+    const myGroup = currentUser.assignedGroup || 'Tổ 1';
+    const stGroup = state.competition?.groupAssignments?.[id] || '';
+    if (stGroup && stGroup !== myGroup) {
+      return toast(`Tổ trưởng chỉ được điểm danh cho thành viên thuộc ${myGroup}!`, 'warning');
+    }
+  }
   const k=attKey();
   if(!state.attendance[k])state.attendance[k]={};
   state.attendance[k][id]=status;
@@ -2426,6 +2588,14 @@ function addCompetitionEvent(criterionId){
   if(weekStartDate(date) !== weekStartDate(state.competition.activeWeek)) return toast('Ngày ghi nhận không thuộc tuần đang chọn','warning');
 
   const isGroupLeader = currentUser?.role === 'group_leader';
+  if (isGroupLeader) {
+    const myGroup = currentUser?.assignedGroup || 'Tổ 1';
+    const stGroup = state.competition?.groupAssignments?.[st.id];
+    if (stGroup && stGroup !== myGroup) {
+      return toast(`Tổ trưởng chỉ được chấm điểm nề nếp cho thành viên thuộc ${myGroup}!`, 'warning');
+    }
+  }
+
   const eventStatus = isGroupLeader ? 'pending' : 'approved';
   const submittedBy = currentUser?.username || (isGroupLeader ? 'totruong' : 'gv');
 
@@ -3392,17 +3562,19 @@ function confettiLite(){for(let i=0;i<24;i++){const p=document.createElement('i'
 
 function renderAccounts(){
   const accounts = (state.accounts && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
-  const teachers = accounts.filter(a => a.role === 'teacher' || a.role === 'admin');
+  const adminCount = accounts.filter(a => a.role === 'admin').length;
+  const teacherCount = accounts.filter(a => a.role === 'teacher').length;
+  const leaderCount = accounts.filter(a => a.role === 'group_leader').length;
   const assignedCount = state.classes.filter(c => c.teacherName && c.teacherName.trim() && c.teacherName !== 'Chưa phân công').length;
   const unassignedCount = Math.max(0, state.classes.length - assignedCount);
-  const activeCount = teachers.filter(a => a.status === 'active').length;
-  const lockedCount = teachers.filter(a => a.status === 'locked').length;
+  const activeCount = accounts.filter(a => a.status === 'active').length;
+  const lockedCount = accounts.filter(a => a.status === 'locked').length;
 
   return `
     <div class="section-head">
       <div>
-        <h2><i class="fa-solid fa-user-shield text-primary me-2"></i>Quản Trị Phân Công & Cấp Mật Khẩu Toàn Trường</h2>
-        <p>Phân công giáo viên chủ nhiệm cho từng lớp, tạo tài khoản và cấp mật khẩu trực tiếp.</p>
+        <h2><i class="fa-solid fa-user-shield text-primary me-2"></i>Quản Trị Toàn Trường & Cấp Tài Khoản / Mật Khẩu</h2>
+        <p>Quản lý toàn bộ thành viên ban quản trị: BGH / Admin, Giáo viên chủ nhiệm các khối lớp và Tổ Trưởng 4 tổ.</p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ Lớp & GVCN</button>
@@ -3418,10 +3590,16 @@ function renderAccounts(){
     <!-- STATS CARDS -->
     <div class="stats-grid mb-3">
       <div class="stat-card">
-        <div class="label">Tổng số Giáo viên</div>
-        <div class="value">${teachers.filter(a => a.role === 'teacher').length}</div>
-        <small>Toàn trường</small>
+        <div class="label">BGH & Giáo Viên</div>
+        <div class="value">${adminCount + teacherCount}</div>
+        <small>${adminCount} Admin · ${teacherCount} GVCN</small>
         <i class="fa-solid fa-chalkboard-user"></i>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tổ Trưởng 4 Tổ</div>
+        <div class="value">${leaderCount}</div>
+        <small>4 tổ trưởng / lớp học</small>
+        <i class="fa-solid fa-user-gear"></i>
       </div>
       <div class="stat-card">
         <div class="label">Lớp đã có GVCN</div>
@@ -3430,15 +3608,9 @@ function renderAccounts(){
         <i class="fa-solid fa-school-circle-check"></i>
       </div>
       <div class="stat-card">
-        <div class="label">Lớp chưa có GVCN</div>
-        <div class="value">${unassignedCount}</div>
-        <small>${unassignedCount === 0 ? 'Đã đủ GVCN' : 'Cần phân công thêm'}</small>
-        <i class="fa-solid fa-school-circle-exclamation"></i>
-      </div>
-      <div class="stat-card">
         <div class="label">Tài khoản Hoạt động</div>
         <div class="value">${activeCount}</div>
-        <small>${lockedCount > 0 ? lockedCount + ' tài khoản bị khóa' : 'Tất cả đang hoạt động'}</small>
+        <small>${lockedCount > 0 ? lockedCount + ' tài khoản bị khóa' : 'Tất cả ' + accounts.length + ' đang hoạt động'}</small>
         <i class="fa-solid fa-shield-check"></i>
       </div>
     </div>
@@ -3446,17 +3618,23 @@ function renderAccounts(){
     <!-- MAIN ACCOUNTS MANAGEMENT CARD -->
     <div class="card p-3">
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h5 class="fw-bold m-0"><i class="fa-solid fa-list-check me-2 text-primary"></i>Danh Sách Tài Khoản & Phân Công Lớp</h5>
+        <h5 class="fw-bold m-0"><i class="fa-solid fa-list-check me-2 text-primary"></i>Danh Sách Tài Khoản Thành Viên Quản Trị</h5>
         <div class="d-flex gap-2 flex-wrap">
-          <select id="accGradeFilter" class="form-select form-select-sm" style="width:160px" onchange="filterAccountsTable()">
+          <select id="accRoleFilter" class="form-select form-select-sm" style="width:170px" onchange="filterAccountsTable()">
+            <option value="">Tất cả vai trò (${accounts.length})</option>
+            <option value="admin">Quản trị viên / BGH (${adminCount})</option>
+            <option value="teacher">Giáo viên chủ nhiệm (${teacherCount})</option>
+            <option value="group_leader">Tổ Trưởng 4 tổ (${leaderCount})</option>
+          </select>
+          <select id="accGradeFilter" class="form-select form-select-sm" style="width:150px" onchange="filterAccountsTable()">
             <option value="">Tất cả các khối</option>
             <option value="Khối 6">Khối 6</option>
             <option value="Khối 7">Khối 7</option>
             <option value="Khối 8">Khối 8</option>
             <option value="Khối 9">Khối 9</option>
-            <option value="unassigned">Chưa phân công lớp</option>
+            <option value="unassigned">Chưa phân công</option>
           </select>
-          <select id="accStatusFilter" class="form-select form-select-sm" style="width:150px" onchange="filterAccountsTable()">
+          <select id="accStatusFilter" class="form-select form-select-sm" style="width:140px" onchange="filterAccountsTable()">
             <option value="">Tất cả trạng thái</option>
             <option value="active">Đang hoạt động</option>
             <option value="locked">Đã bị khóa</option>
@@ -3473,24 +3651,49 @@ function renderAccounts(){
           <thead class="table-light">
             <tr>
               <th style="width:50px" class="text-center">STT</th>
-              <th>Giáo Viên</th>
+              <th>Thành Viên</th>
               <th>Vai Trò</th>
-              <th>Lớp Chủ Nhiệm</th>
-              <th>Mật Khẩu Khởi Tạo</th>
+              <th>Lớp / Tổ Quản Lý</th>
+              <th>Mật Khẩu / Mã PIN</th>
               <th class="text-center">Trạng Thái</th>
               <th class="text-end" style="min-width:170px">Thao Tác</th>
             </tr>
           </thead>
           <tbody>
-            ${teachers.map((a, idx) => {
+            ${accounts.map((a, idx) => {
               const assignedCls = state.classes.find(c => c.id === a.assignedClass || c.name === a.assignedClass);
               const clsGrade = assignedCls?.grade || '';
-              const isAssigned = !!assignedCls;
+              const isAssigned = !!assignedCls || a.assignedClass === '*';
               const isLocked = a.status === 'locked';
               const isAdmin = a.role === 'admin';
+              const isLeader = a.role === 'group_leader';
+
+              let roleBadge = '';
+              if (isAdmin) {
+                roleBadge = '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>Quản trị viên</span>';
+              } else if (isLeader) {
+                roleBadge = `<span class="badge bg-info text-dark"><i class="fa-solid fa-user-gear me-1"></i>Tổ Trưởng</span>`;
+              } else {
+                roleBadge = '<span class="badge bg-primary"><i class="fa-solid fa-chalkboard-user me-1"></i>GVCN</span>';
+              }
+
+              let assignDisplay = '';
+              if (isAdmin) {
+                assignDisplay = '<span class="badge bg-light text-secondary border">Toàn quyền các lớp (*)</span>';
+              } else if (assignedCls) {
+                assignDisplay = `
+                  <div>
+                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-bold fs-6">Lớp ${esc(assignedCls.name)}</span>
+                    ${isLeader ? `<span class="badge bg-primary-subtle text-primary border ms-1 fw-bold">${esc(a.assignedGroup || 'Tổ')}</span>` : ''}
+                    <div class="small text-muted mt-1">${esc(assignedCls.grade)} · ${getClassSession(assignedCls.id)==='morning'?'☀️ Sáng':'🌤️ Chiều'}</div>
+                  </div>
+                `;
+              } else {
+                assignDisplay = '<span class="badge bg-secondary-subtle text-secondary border">Chưa phân công</span>';
+              }
 
               return `
-                <tr data-grade="${esc(clsGrade)}" data-assigned="${isAssigned?'yes':'no'}" data-status="${esc(a.status || 'active')}" data-search="${esc((a.fullname + ' ' + a.username + ' ' + (assignedCls?.name || '') + ' ' + (a.phone || '')).toLowerCase())}">
+                <tr data-role="${esc(a.role || 'teacher')}" data-grade="${esc(clsGrade)}" data-assigned="${isAssigned?'yes':'no'}" data-status="${esc(a.status || 'active')}" data-search="${esc((a.fullname + ' ' + a.username + ' ' + (assignedCls?.name || '') + ' ' + (a.assignedGroup || '') + ' ' + (a.phone || '')).toLowerCase())}">
                   <td class="text-center text-muted fw-bold">${idx + 1}</td>
                   <td>
                     <div class="d-flex align-items-center gap-2">
@@ -3501,20 +3704,11 @@ function renderAccounts(){
                       </div>
                     </div>
                   </td>
-                  <td>
-                    ${isAdmin ? '<span class="badge bg-danger"><i class="fa-solid fa-crown me-1"></i>Quản trị viên</span>' : '<span class="badge bg-primary"><i class="fa-solid fa-chalkboard-user me-1"></i>GVCN</span>'}
-                  </td>
-                  <td>
-                    ${isAdmin ? '<span class="badge bg-light text-secondary border">Toàn quyền các lớp (*)</span>' : assignedCls ? `
-                      <div>
-                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-bold fs-6">Lớp ${esc(assignedCls.name)}</span>
-                        <div class="small text-muted mt-1">${esc(assignedCls.grade)} · ${getClassSession(assignedCls.id)==='morning'?'☀️ Sáng':'🌤️ Chiều'}</div>
-                      </div>
-                    ` : '<span class="badge bg-secondary-subtle text-secondary border">Chưa phân công</span>'}
-                  </td>
+                  <td>${roleBadge}</td>
+                  <td>${assignDisplay}</td>
                   <td>
                     <div class="d-flex align-items-center gap-2">
-                      <span id="pwd_val_${esc(a.username)}" class="font-monospace fw-bold" data-raw="${esc(a.password || '123456')}">••••••••</span>
+                      <span id="pwd_val_${esc(a.username)}" class="font-monospace fw-bold" data-raw="${esc(a.password || a.pin || '123456')}">••••••••</span>
                       <button class="btn btn-sm btn-link p-0 text-muted" title="Xem / Ẩn mật khẩu" onclick="togglePasswordVisibility('${esc(a.username)}')">
                         <i id="pwd_eye_${esc(a.username)}" class="fa-solid fa-eye"></i>
                       </button>
@@ -3529,13 +3723,13 @@ function renderAccounts(){
                   </td>
                   <td class="text-end">
                     <div class="btn-group btn-group-sm">
-                      ${!isAdmin ? `
+                      ${!isAdmin && !isLeader ? `
                         <button class="btn btn-outline-primary" title="Phân công / Đổi lớp chủ nhiệm" onclick="openAssignTeacherModal('${esc(a.username)}', '${esc(a.assignedClass || '')}')">
                           <i class="fa-solid fa-arrow-right-arrow-left"></i> Phân công
                         </button>
                       ` : ''}
-                      <button class="btn btn-outline-secondary" title="Đặt lại mật khẩu" onclick="openChangeTeacherPasswordModal('${esc(a.username)}')">
-                        <i class="fa-solid fa-key"></i> Đổi pass
+                      <button class="btn btn-outline-secondary" title="Đặt lại mật khẩu / PIN" onclick="openChangeTeacherPasswordModal('${esc(a.username)}')">
+                        <i class="fa-solid fa-key"></i> Đổi pass/PIN
                       </button>
                       ${!isAdmin ? `
                         <button class="btn ${isLocked ? 'btn-outline-success' : 'btn-outline-warning'}" title="${isLocked ? 'Mở khóa tài khoản' : 'Tạm khóa tài khoản'}" onclick="toggleTeacherAccountStatus('${esc(a.username)}')">
@@ -3558,15 +3752,19 @@ function renderAccounts(){
 }
 
 function filterAccountsTable(){
+  const role = document.getElementById('accRoleFilter')?.value || '';
   const grade = document.getElementById('accGradeFilter')?.value || '';
   const status = document.getElementById('accStatusFilter')?.value || '';
   const q = (document.getElementById('accSearch')?.value || '').trim().toLowerCase();
 
   document.querySelectorAll('#accountsTable tbody tr').forEach(tr => {
+    const trRole = tr.getAttribute('data-role') || '';
     const trGrade = tr.getAttribute('data-grade') || '';
     const trAssigned = tr.getAttribute('data-assigned') || 'yes';
     const trStatus = tr.getAttribute('data-status') || 'active';
     const trSearch = tr.getAttribute('data-search') || '';
+
+    const matchRole = !role || trRole === role;
 
     let matchGrade = true;
     if (grade === 'unassigned') {
@@ -3578,7 +3776,7 @@ function filterAccountsTable(){
     const matchStatus = !status || trStatus === status;
     const matchSearch = !q || trSearch.includes(q);
 
-    tr.style.display = (matchGrade && matchStatus && matchSearch) ? '' : 'none';
+    tr.style.display = (matchRole && matchGrade && matchStatus && matchSearch) ? '' : 'none';
   });
 }
 
@@ -3843,35 +4041,40 @@ function openChangeTeacherPasswordModal(username){
   }
   if (!acc) return toast('Không tìm thấy tài khoản', 'error');
 
-  showModal('Cấp / Đổi Mật Khẩu Giáo Viên', `
+  const isLeader = acc.role === 'group_leader';
+  const roleLabel = acc.role === 'admin' ? 'Quản trị viên / BGH' : isLeader ? (`Tổ Trưởng (${acc.assignedGroup})`) : 'GVCN';
+  const defaultResetVal = isLeader ? '1234' : '123456';
+  const modalTitle = isLeader ? 'Cấp / Đổi Mã PIN Tổ Trưởng' : 'Cấp / Đổi Mật Khẩu Thành Viên';
+
+  showModal(modalTitle, `
     <form onsubmit="saveTeacherPassword(event, '${esc(acc.username)}')">
       <div class="card bg-light p-3 mb-3 border">
         <div class="d-flex align-items-center gap-2">
           <div class="avatar" style="width:40px;height:40px">${esc(initials(acc.fullname))}</div>
           <div>
             <h6 class="fw-bold m-0">${esc(acc.fullname)}</h6>
-            <div class="small text-muted font-monospace">Tài khoản: <b>${esc(acc.username)}</b> · Vai trò: ${acc.role === 'admin' ? 'Quản trị viên' : 'GVCN'}</div>
+            <div class="small text-muted font-monospace">Tài khoản: <b>${esc(acc.username)}</b> · Vai trò: ${roleLabel}</div>
           </div>
         </div>
       </div>
       <div class="mb-3">
-        <label class="form-label fw-bold">Mật khẩu mới *</label>
+        <label class="form-label fw-bold">${isLeader ? 'Mã PIN mới *' : 'Mật khẩu mới *'}</label>
         <div class="input-group">
           <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-          <input id="changeTeacherPasswordInput" class="form-control font-monospace fs-5 fw-bold" required placeholder="Nhập mật khẩu mới">
+          <input id="changeTeacherPasswordInput" class="form-control font-monospace fs-5 fw-bold" required placeholder="${isLeader ? 'Nhập mã PIN (VD: 1234)' : 'Nhập mật khẩu mới'}">
           <button type="button" class="btn btn-outline-secondary" onclick="generateRandomPassword('changeTeacherPasswordInput')">
-            <i class="fa-solid fa-shuffle me-1"></i>Tạo an toàn
+            <i class="fa-solid fa-shuffle me-1"></i>Tạo tự động
           </button>
         </div>
-        <small class="text-muted">Mật khẩu tối thiểu từ 4 ký tự. Sau khi đổi, giáo viên dùng mật khẩu mới này để đăng nhập ngay.</small>
+        <small class="text-muted">${isLeader ? 'Mã PIN gồm các chữ số (khuyến nghị 4 chữ số).' : 'Mật khẩu tối thiểu từ 4 ký tự. Sau khi đổi, thành viên dùng mật khẩu này để đăng nhập ngay.'}</small>
       </div>
       <div class="d-flex justify-content-between align-items-center mt-4 pt-2 border-top">
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('changeTeacherPasswordInput').value='123456'">
-          Đặt về '123456'
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('changeTeacherPasswordInput').value='${defaultResetVal}'">
+          Đặt về '${defaultResetVal}'
         </button>
         <div>
           <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Hủy</button>
-          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i>Cập Nhật Mật Khẩu</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i>Cập Nhật ${isLeader ? 'Mã PIN' : 'Mật Khẩu'}</button>
         </div>
       </div>
     </form>
@@ -3881,7 +4084,7 @@ function openChangeTeacherPasswordModal(username){
 function saveTeacherPassword(e, username){
   e.preventDefault();
   const newPassword = document.getElementById('changeTeacherPasswordInput').value.trim();
-  if (!newPassword) return toast('Mật khẩu không được để trống', 'warning');
+  if (!newPassword) return toast('Mật khẩu/Mã PIN không được để trống', 'warning');
 
   const uLower = String(username || '').trim().toLowerCase();
   state.accounts = state.accounts || [];
@@ -3892,6 +4095,7 @@ function saveTeacherPassword(e, username){
       id: uid('acc'),
       username: def ? def.username : uLower,
       password: newPassword,
+      pin: newPassword,
       fullname: def?.fullname || uLower,
       role: def?.role || 'teacher',
       assignedClass: def?.assignedClass || '*',
@@ -3903,6 +4107,7 @@ function saveTeacherPassword(e, username){
     state.accounts.push(acc);
   } else {
     acc.password = newPassword;
+    acc.pin = newPassword;
     acc.updatedAt = new Date().toISOString();
   }
 
@@ -3910,6 +4115,7 @@ function saveTeacherPassword(e, username){
   state.accounts.forEach(a => {
     if (a.username.toLowerCase() === uLower) {
       a.password = newPassword;
+      a.pin = newPassword;
       a.updatedAt = new Date().toISOString();
     }
   });
@@ -3927,8 +4133,8 @@ function saveTeacherPassword(e, username){
   renderPage();
   Swal.fire({
     icon: 'success',
-    title: 'Đã cập nhật mật khẩu!',
-    html: `Mật khẩu mới cho tài khoản <b>${esc(uLower)}</b> (${esc(acc.fullname)}) là:<br><span class="badge bg-primary fs-5 font-monospace mt-2 px-3 py-2">${esc(newPassword)}</span><br><small class="text-muted mt-2 d-block">Hãy ghi nhận lại để bàn giao cho giáo viên. Tài khoản có thể đăng nhập ngay.</small>`
+    title: 'Đã cập nhật thành công!',
+    html: `Thông tin bảo mật mới cho tài khoản <b>${esc(uLower)}</b> (${esc(acc.fullname)}) là:<br><span class="badge bg-primary fs-5 font-monospace mt-2 px-3 py-2">${esc(newPassword)}</span><br><small class="text-muted mt-2 d-block">Tài khoản có thể đăng nhập ngay bằng mật khẩu/PIN mới này.</small>`
   });
 
   if (state.settings?.gasApiUrl) {
