@@ -275,6 +275,7 @@
         <div class="save-pill" id="savePill"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Đã lưu</div>
         <select class="class-switcher" id="classSwitcher" onchange="switchClass(this.value)"></select>
         <div class="teacher-mini" id="teacherMiniWrap" style="cursor:pointer" onclick="showLoginModal()" title="Bấm để đổi tài khoản"><div class="avatar" id="teacherAvatarMini"></div><div><strong id="teacherNameMini">Giáo viên</strong><small id="teacherRoleMini">Giáo viên</small></div></div>
+        <button class="btn btn-sm btn-outline-success" id="shareLinksBtn" onclick="showShareLinksModal()" title="Lấy link đăng nhập gửi cho Giáo viên & Tổ Trưởng"><i class="fa-solid fa-share-nodes me-1"></i><span class="d-none d-md-inline">Lấy link gửi</span></button>
         <button class="btn btn-sm btn-outline-danger" id="logoutBtn" onclick="logoutUser()" title="Đăng xuất"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
       </div>
     </header>
@@ -559,7 +560,11 @@ function defaultState(){
   teacher:{name:'Lê Tâm',role:'GVCN',subject:'Toán',school:'THCS Quang Trung',avatar:''},
   classes:[
     {id:cls,name:'8A6',grade:'Khối 8',year:'2026 - 2027',teacherName:'Lê Tâm',session:'afternoon',color:'#0d9488'},
-    {id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',teacherName:'Nguyễn Văn A',session:'afternoon',color:'#0284c7'}
+    {id:'class_8a1',name:'8A1',grade:'Khối 8',year:'2026 - 2027',teacherName:'Nguyễn Văn A',session:'afternoon',color:'#0284c7'},
+    {id:'class_8a2',name:'8A2',grade:'Khối 8',year:'2026 - 2027',teacherName:'GVCN 8A2',session:'afternoon',color:'#10b981'},
+    {id:'class_8a3',name:'8A3',grade:'Khối 8',year:'2026 - 2027',teacherName:'GVCN 8A3',session:'afternoon',color:'#f59e0b'},
+    {id:'class_8a4',name:'8A4',grade:'Khối 8',year:'2026 - 2027',teacherName:'GVCN 8A4',session:'afternoon',color:'#8b5cf6'},
+    {id:'class_8a5',name:'8A5',grade:'Khối 8',year:'2026 - 2027',teacherName:'GVCN 8A5',session:'afternoon',color:'#ec4899'}
   ],students,
   attendance:{},attendanceDate:today(),
   seating:{[cls]:{lanes:4,seats:Math.ceil(students.length/2),mode:'2d',assignments:{}}},
@@ -826,18 +831,362 @@ syncClassesAndAccounts(true);
 
 let currentUser = loadUserSession();
 if(typeof window !== 'undefined') window.currentUser = currentUser;
+
 function loadUserSession(){
   try {
     const raw = sessionStorage.getItem('gvcn_user_session') || localStorage.getItem('gvcn_user_session');
-    if(raw) return JSON.parse(raw);
+    if(raw) {
+      const u = JSON.parse(raw);
+      if (u && u.username) return u;
+    }
   }catch(e){}
-  return { username: 'gv_8a6', fullname: 'Lê Tâm', role: 'teacher', assignedClass: 'class_8a6', assignedGroup: '*' };
+  return null; // Không tự động đăng nhập tài khoản mặc định gv_8a6 khi gửi link!
 }
+
 function saveUserSession(user){
   currentUser = user;
   if(typeof window !== 'undefined') window.currentUser = user;
   sessionStorage.setItem('gvcn_user_session', JSON.stringify(user));
   localStorage.setItem('gvcn_user_session', JSON.stringify(user));
+}
+
+function getBaseAppUrl(){
+  if(typeof window === 'undefined') return 'https://app-gvcn-k8.vercel.app/';
+  const loc = window.location;
+  return `${loc.protocol}//${loc.host}${loc.pathname}`;
+}
+
+function copyToClipboard(text, successMsg = 'Đã sao chép link!'){
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast(successMsg)).catch(() => promptCopyFallback(text));
+  } else {
+    promptCopyFallback(text);
+  }
+}
+
+function promptCopyFallback(text){
+  window.prompt('Sao chép đường dẫn này:', text);
+}
+
+function copyDirectLoginLink(username){
+  const a = (state.accounts || DEFAULT_ACCOUNTS).find(x => x.username.toLowerCase() === username.toLowerCase());
+  if(!a) return toast('Không tìm thấy tài khoản', 'warning');
+  const base = getBaseAppUrl();
+  let link = '';
+  if(a.role === 'group_leader'){
+    const tNum = (a.assignedGroup || '1').replace(/[^0-9]/g, '') || '1';
+    const cleanCls = (a.assignedClass || '').replace(/^class_/, '').toLowerCase();
+    link = `${base}?class=${cleanCls}&to=${tNum}&pin=${encodeURIComponent(a.password || a.pin || '1234')}`;
+  } else if(a.role === 'admin'){
+    link = `${base}?u=admin&p=${encodeURIComponent(a.password || 'admin123')}`;
+  } else {
+    const cleanCls = (a.assignedClass || '').replace(/^class_/, '').toLowerCase();
+    link = `${base}?class=${cleanCls}&u=${encodeURIComponent(a.username)}&p=${encodeURIComponent(a.password || '123456')}`;
+  }
+  copyToClipboard(link, `Đã sao chép link đăng nhập cho ${a.fullname}!`);
+}
+
+function openClassShareModal(classId){
+  const cls = state.classes.find(c => c.id === classId) || activeClass();
+  const clean = cls.name.toLowerCase();
+  const base = getBaseAppUrl();
+  const teacherUser = `gv_${clean}`;
+
+  const teacherLink = `${base}?class=${clean}&u=${teacherUser}`;
+  const teacherLinkAuto = `${base}?class=${clean}&u=${teacherUser}&p=123456`;
+
+  const to1Link = `${base}?class=${clean}&to=1&pin=1234`;
+  const to2Link = `${base}?class=${clean}&to=2&pin=1234`;
+  const to3Link = `${base}?class=${clean}&to=3&pin=1234`;
+  const to4Link = `${base}?class=${clean}&to=4&pin=1234`;
+
+  showModal(`Chia sẻ Link Đăng Nhập · Lớp ${esc(cls.name)}`, `
+    <div class="text-start">
+      <div class="alert alert-success py-2 small mb-3">
+        <i class="fa-solid fa-paper-plane me-1"></i><b>Gửi link cho GVCN hoặc Học sinh:</b> Người nhận chỉ cần bấm link là vào thẳng lớp <b>${esc(cls.name)}</b>, không sợ bị nhầm sang lớp khác!
+      </div>
+
+      <div class="card p-3 mb-3 border-primary">
+        <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-chalkboard-user me-1"></i>1. Link gửi Giáo viên Chủ nhiệm (${esc(cls.teacherName || 'GVCN ' + cls.name)})</h6>
+        <label class="form-label small text-muted mb-1">Tài khoản: <code>${teacherUser}</code> (hoặc gõ <code>${clean}</code>) · Pass: <code>123456</code></label>
+        <div class="input-group mb-2">
+          <input class="form-control font-monospace form-control-sm bg-light" readonly value="${teacherLink}">
+          <button class="btn btn-outline-primary btn-sm fw-bold" onclick="copyToClipboard('${teacherLink}', 'Đã sao chép link gửi GVCN!')"><i class="fa-solid fa-copy me-1"></i>Copy Link</button>
+        </div>
+        <div class="input-group">
+          <span class="input-group-text small py-0 bg-light text-muted">Vào thẳng (1 chạm):</span>
+          <input class="form-control font-monospace form-control-sm bg-light" readonly value="${teacherLinkAuto}">
+          <button class="btn btn-primary btn-sm fw-bold" onclick="copyToClipboard('${teacherLinkAuto}', 'Đã sao chép link 1-chạm gửi GVCN!')"><i class="fa-solid fa-bolt me-1"></i>Copy Link Tự Đăng Nhập</button>
+        </div>
+      </div>
+
+      <div class="card p-3 border">
+        <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-users me-1"></i>2. Link gửi 4 Tổ Trưởng (Đăng nhập bằng PIN 1234)</h6>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small">⭐ Tổ Trưởng Tổ 1</span>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="copyToClipboard('${to1Link}', 'Đã sao chép link Tổ 1!')"><i class="fa-solid fa-copy me-1"></i>Copy</button>
+              </div>
+              <input class="form-control form-control-sm font-monospace bg-white" readonly value="${to1Link}">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small">⭐ Tổ Trưởng Tổ 2</span>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="copyToClipboard('${to2Link}', 'Đã sao chép link Tổ 2!')"><i class="fa-solid fa-copy me-1"></i>Copy</button>
+              </div>
+              <input class="form-control form-control-sm font-monospace bg-white" readonly value="${to2Link}">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small">⭐ Tổ Trưởng Tổ 3</span>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="copyToClipboard('${to3Link}', 'Đã sao chép link Tổ 3!')"><i class="fa-solid fa-copy me-1"></i>Copy</button>
+              </div>
+              <input class="form-control form-control-sm font-monospace bg-white" readonly value="${to3Link}">
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small">⭐ Tổ Trưởng Tổ 4</span>
+                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="copyToClipboard('${to4Link}', 'Đã sao chép link Tổ 4!')"><i class="fa-solid fa-copy me-1"></i>Copy</button>
+              </div>
+              <input class="form-control form-control-sm font-monospace bg-white" readonly value="${to4Link}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function showShareLinksModal(){
+  const base = getBaseAppUrl();
+  const adminLink = `${base}?u=admin`;
+  const adminLinkAuto = `${base}?u=admin&p=admin123`;
+
+  const classesRows = state.classes.map(c => {
+    const clean = c.name.toLowerCase();
+    const gvLink = `${base}?class=${clean}&u=gv_${clean}&p=123456`;
+    return `
+      <tr>
+        <td class="fw-bold">Lớp ${esc(c.name)}</td>
+        <td>${esc(c.teacherName || 'Chưa phân công')}</td>
+        <td><code>gv_${clean}</code></td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="copyToClipboard('${gvLink}', 'Đã sao chép link GVCN ${esc(c.name)}!')"><i class="fa-solid fa-copy me-1"></i>Link GVCN</button>
+          <button class="btn btn-sm btn-outline-success py-0 px-2 ms-1" onclick="openClassShareModal('${c.id}')"><i class="fa-solid fa-share-nodes me-1"></i>Chi tiết 4 Tổ</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  showModal('Trung Tâm Chia Sẻ Link Đăng Nhập Toàn Trường', `
+    <div class="text-start">
+      <div class="alert alert-info py-2 small mb-3">
+        <i class="fa-solid fa-circle-info me-1"></i><b>Gửi đúng người, đúng lớp:</b> Bấm <b>Copy</b> và dán link vào Zalo/Tin nhắn gửi cho từng Giáo viên hoặc Tổ Trưởng. Khi mở link, hệ thống sẽ đưa họ vào thẳng đúng lớp và tài khoản của họ!
+      </div>
+
+      <div class="card p-3 mb-3 border-danger">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="fw-bold text-danger m-0"><i class="fa-solid fa-user-shield me-1"></i>Link Quản Trị Viên (Ban Giám Hiệu)</h6>
+            <small class="text-muted">Tài khoản <code>admin</code> / pass: <code>admin123</code></small>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-danger" onclick="copyToClipboard('${adminLink}', 'Đã copy link Admin!')"><i class="fa-solid fa-copy me-1"></i>Link thường</button>
+            <button class="btn btn-danger" onclick="copyToClipboard('${adminLinkAuto}', 'Đã copy link Admin 1-chạm!')"><i class="fa-solid fa-bolt me-1"></i>Link 1-chạm</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle table-hover border">
+          <thead class="table-light">
+            <tr>
+              <th>Lớp</th>
+              <th>Giáo viên Chủ nhiệm</th>
+              <th>Tài khoản</th>
+              <th class="text-end">Thao tác gửi link</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${classesRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `);
+}
+
+function autoLoginTeacher(username, password){
+  const accountsList = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
+  let localAcc = findMatchingAccount(accountsList, username);
+  if (!localAcc) {
+    const cleanU = username.toLowerCase().replace(/^gv[_]?/, '').replace(/^class[_]?/, '');
+    let foundCls = state.classes.find(c => c.name.toLowerCase() === cleanU || c.id.toLowerCase() === `class_${cleanU}`);
+    if (!foundCls) {
+      foundCls = { id: 'class_' + cleanU, name: cleanU.toUpperCase(), grade: `Khối ${cleanU[0] || '8'}`, year: '2026 - 2027', teacherName: `GVCN ${cleanU.toUpperCase()}`, session: (/7|9/.test(cleanU)?'morning':'afternoon'), color: '#0d9488' };
+      state.classes = state.classes || [];
+      state.classes.push(foundCls);
+      saveState(false);
+    }
+    localAcc = { id: uid('acc'), username, password, fullname: foundCls.teacherName || `GVCN ${foundCls.name}`, role: 'teacher', assignedClass: foundCls.id, assignedGroup: '*', status: 'active', phone: '', updatedAt: new Date().toISOString() };
+    state.accounts = state.accounts || [];
+    state.accounts.push(localAcc);
+    saveState(false);
+  }
+  if (localAcc) {
+    localAcc.password = password;
+    if (localAcc.assignedClass && localAcc.assignedClass !== '*') {
+      state.activeClassId = localAcc.assignedClass;
+    }
+    saveUserSession(localAcc);
+    applyUserPermissions();
+    hideModal();
+    toast(`Đăng nhập thành công: ${localAcc.fullname}!`);
+  }
+}
+
+function autoLoginGroupLeader(classId, group, pin){
+  const cleanSuffix = classId.replace(/^class_/, '').toLowerCase();
+  const tNum = group.replace(/[^0-9]/g, '') || '1';
+  let foundCls = state.classes.find(c => c.id === classId || c.name.toLowerCase() === cleanSuffix);
+  if (!foundCls) {
+    foundCls = { id: classId, name: cleanSuffix.toUpperCase(), grade: `Khối ${cleanSuffix[0] || '8'}`, year: '2026 - 2027', teacherName: `GVCN ${cleanSuffix.toUpperCase()}`, session: (/7|9/.test(cleanSuffix)?'morning':'afternoon'), color: '#0d9488' };
+    state.classes = state.classes || [];
+    state.classes.push(foundCls);
+    saveState(false);
+  }
+  let localAcc = (state.accounts || DEFAULT_ACCOUNTS).find(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === group);
+  if (!localAcc) {
+    localAcc = {
+      id: uid('acc'),
+      username: `totruong_${cleanSuffix}_t${tNum}`,
+      password: pin,
+      pin: pin,
+      fullname: `Tổ Trưởng ${group} (${cleanSuffix.toUpperCase()})`,
+      role: 'group_leader',
+      assignedClass: classId,
+      assignedGroup: group,
+      status: 'active',
+      phone: '',
+      updatedAt: new Date().toISOString()
+    };
+    state.accounts = state.accounts || [];
+    state.accounts.push(localAcc);
+    saveState(false);
+  } else {
+    localAcc.pin = pin;
+    localAcc.password = pin;
+  }
+  state.activeClassId = classId;
+  saveUserSession(localAcc);
+  applyUserPermissions();
+  hideModal();
+  toast(`Đăng nhập Tổ trưởng: ${localAcc.fullname}!`);
+}
+
+function handleUrlParams(){
+  if (typeof window === 'undefined' || !window.location.search) return false;
+  const params = new URLSearchParams(window.location.search);
+
+  const rawU = (params.get('u') || params.get('user') || params.get('username') || '').trim();
+  const rawP = (params.get('p') || params.get('pass') || params.get('password') || '').trim();
+  const rawClass = (params.get('class') || params.get('lop') || '').trim();
+  const rawPin = (params.get('pin') || '').trim();
+  const rawGroup = (params.get('group') || params.get('to') || '').trim();
+  const isPinTab = rawPin || params.get('tab') === 'pin' || rawGroup;
+  const forceLogout = params.get('logout') === '1' || params.has('logout');
+  const forceLogin = params.get('login') === '1' || params.has('login');
+
+  if (forceLogout) {
+    sessionStorage.removeItem('gvcn_user_session');
+    localStorage.removeItem('gvcn_user_session');
+    currentUser = null;
+    window.currentUser = null;
+  }
+
+  // 1. Xác định lớp học yêu cầu (nếu có)
+  let targetClassId = '';
+  if (rawClass) {
+    const cleanC = rawClass.toLowerCase().replace(/^class_/, '');
+    let foundC = state.classes.find(c => c.id.toLowerCase() === rawClass.toLowerCase() || c.id.toLowerCase() === `class_${cleanC}` || c.name.toLowerCase() === cleanC);
+    if (!foundC) {
+      foundC = {
+        id: `class_${cleanC}`,
+        name: cleanC.toUpperCase(),
+        grade: `Khối ${cleanC[0] || '8'}`,
+        year: '2026 - 2027',
+        teacherName: `GVCN ${cleanC.toUpperCase()}`,
+        session: (/7|9/.test(cleanC) ? 'morning' : 'afternoon'),
+        color: '#0d9488'
+      };
+      state.classes = state.classes || [];
+      state.classes.push(foundC);
+      saveState(false);
+    }
+    targetClassId = foundC.id;
+    state.activeClassId = foundC.id;
+  }
+
+  // 2. Xác định tên đăng nhập
+  let targetUsername = rawU;
+  if (targetUsername) {
+    const cleanU = targetUsername.toLowerCase().trim();
+    const matchedAcc = findMatchingAccount(state.accounts || DEFAULT_ACCOUNTS, cleanU);
+    if (matchedAcc) targetUsername = matchedAcc.username;
+  } else if (targetClassId && !isPinTab) {
+    const cleanSuffix = targetClassId.replace(/^class_/, '').toLowerCase();
+    targetUsername = `gv_${cleanSuffix}`;
+  }
+
+  // 3. Xác định Tổ
+  let targetGroupStr = '';
+  if (rawGroup) {
+    const num = rawGroup.replace(/[^0-9]/g, '');
+    targetGroupStr = num ? `Tổ ${num}` : rawGroup;
+  }
+
+  // 4. Nếu có sẵn mật khẩu trong link: ĐĂNG NHẬP 1-CHẠM NGAY!
+  if (targetUsername && rawP) {
+    autoLoginTeacher(targetUsername, rawP);
+    try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e){}
+    return true;
+  }
+
+  if (isPinTab && rawPin && rawPin.length >= 4 && targetClassId && targetGroupStr) {
+    autoLoginGroupLeader(targetClassId, targetGroupStr, rawPin);
+    try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e){}
+    return true;
+  }
+
+  // 5. Nếu link chỉ định tài khoản khác với tài khoản đang lưu
+  if (targetUsername && currentUser && currentUser.username.toLowerCase() !== targetUsername.toLowerCase()) {
+    sessionStorage.removeItem('gvcn_user_session');
+    localStorage.removeItem('gvcn_user_session');
+    currentUser = null;
+    window.currentUser = null;
+  }
+
+  // 6. Mở Modal Đăng nhập với dữ liệu đã điền sẵn từ link
+  if (forceLogin || targetUsername || targetClassId || isPinTab) {
+    showLoginModal({
+      targetUser: targetUsername,
+      targetClass: targetClassId,
+      isPin: !!isPinTab,
+      targetGroup: targetGroupStr,
+      notice: targetUsername ? `Bạn đang mở link đăng nhập cho tài khoản: <b>${esc(targetUsername)}</b>` : (targetClassId ? `Bạn đang mở link cho lớp <b>${esc(targetClassId.replace(/^class_/,'').toUpperCase())}</b>` : '')
+    });
+    return true;
+  }
+
+  return false;
 }
 function togglePasswordInput(inputId, btnEl){
   const input = document.getElementById(inputId);
@@ -947,18 +1296,27 @@ function findMatchingAccount(accountsList, inputUsername) {
   return null;
 }
 
-function showLoginModal(){
+function showLoginModal(options = {}){
+  const targetUser = options?.targetUser || '';
+  const targetClass = options?.targetClass || state.activeClassId;
+  const isPin = !!options?.isPin;
+  const targetGroup = options?.targetGroup || 'Tổ 1';
+  const customNotice = options?.notice || '';
+
   const classesList = state.classes && state.classes.length ? state.classes : [{ id: 'class_8a6', name: '8A6' }, { id: 'class_8a1', name: '8A1' }];
-  const classOptions = classesList.map(c => `<option value="${c.id}" ${c.id === state.activeClassId ? 'selected' : ''}>Lớp ${esc(c.name)}</option>`).join('');
+  const classOptions = classesList.map(c => `<option value="${c.id}" ${c.id === targetClass ? 'selected' : ''}>Lớp ${esc(c.name)}</option>`).join('');
 
   const allAccounts = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
   const teacherAccounts = allAccounts.filter(a => a.role === 'teacher' || a.role === 'admin');
   const chipsHtml = teacherAccounts.map(a => {
-    const isCur = currentUser?.username === a.username;
+    const isCur = (targetUser || currentUser?.username) === a.username;
     return `<button type="button" class="btn btn-sm ${isCur ? 'btn-primary text-white' : 'btn-outline-secondary'} py-1 px-2 text-nowrap font-monospace" onclick="quickSelectLoginAccount('${esc(a.username)}')">
       <i class="fa-solid ${a.role==='admin'?'fa-crown text-warning':'fa-chalkboard-user text-primary'} me-1"></i>${esc(a.username)}
     </button>`;
   }).join(' ');
+
+  const initialUserVal = targetUser || (currentUser?.role !== 'group_leader' ? (currentUser?.username || '') : '');
+  const isPinActive = isPin;
 
   showModal('Hệ Thống Đăng Nhập Toàn Trường', `
     <div class="text-center mb-3">
@@ -967,14 +1325,16 @@ function showLoginModal(){
       <div class="text-muted small mt-1">Đăng nhập đúng vai trò: Giáo viên hoặc Tổ Trưởng để thao tác</div>
     </div>
 
+    ${customNotice ? `<div class="alert alert-info py-2 small mb-3"><i class="fa-solid fa-link me-1"></i>${customNotice}</div>` : ''}
+
     <ul class="nav nav-pills nav-fill mb-3" id="loginTabs" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active fw-bold" id="teacher-tab" data-bs-toggle="pill" data-bs-target="#tab-teacher" type="button" role="tab">
+        <button class="nav-link ${isPinActive ? '' : 'active'} fw-bold" id="teacher-tab" data-bs-toggle="pill" data-bs-target="#tab-teacher" type="button" role="tab">
           <i class="fa-solid fa-chalkboard-user me-1"></i>Giáo viên / Admin
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link fw-bold" id="pin-tab" data-bs-toggle="pill" data-bs-target="#tab-pin" type="button" role="tab">
+        <button class="nav-link ${isPinActive ? 'active' : ''} fw-bold" id="pin-tab" data-bs-toggle="pill" data-bs-target="#tab-pin" type="button" role="tab">
           <i class="fa-solid fa-key me-1"></i>Tổ Trưởng (Mã PIN)
         </button>
       </li>
@@ -982,13 +1342,13 @@ function showLoginModal(){
 
     <div class="tab-content" id="loginTabsContent">
       <!-- TAB 1: GIÁO VIÊN / ADMIN -->
-      <div class="tab-pane fade show active" id="tab-teacher" role="tabpanel">
+      <div class="tab-pane fade ${isPinActive ? '' : 'show active'}" id="tab-teacher" role="tabpanel">
         <form onsubmit="handleLoginSubmit(event)">
           <div class="mb-3">
             <label class="form-label fw-bold">Tên đăng nhập *</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-              <input id="loginUsername" class="form-control font-monospace fw-bold" required placeholder="admin hoặc gv_8a3" value="${esc(currentUser?.role !== 'group_leader' ? (currentUser?.username || '') : '')}">
+              <input id="loginUsername" class="form-control font-monospace fw-bold" required placeholder="admin hoặc gv_8a3" value="${esc(initialUserVal)}">
             </div>
           </div>
           <div class="mb-3">
@@ -1023,7 +1383,7 @@ function showLoginModal(){
       </div>
 
       <!-- TAB 2: TỔ TRƯỞNG (ĐĂNG NHẬP MÃ PIN 4 SỐ) -->
-      <div class="tab-pane fade" id="tab-pin" role="tabpanel">
+      <div class="tab-pane fade ${isPinActive ? 'show active' : ''}" id="tab-pin" role="tabpanel">
         <form onsubmit="handlePinLoginSubmit(event)">
           <div class="row g-2 mb-3">
             <div class="col-md-6">
@@ -1035,10 +1395,10 @@ function showLoginModal(){
             <div class="col-md-6">
               <label class="form-label fw-bold">Chọn Tổ *</label>
               <select id="pinLoginGroup" class="form-select" required>
-                <option value="Tổ 1" selected>Tổ 1</option>
-                <option value="Tổ 2">Tổ 2</option>
-                <option value="Tổ 3">Tổ 3</option>
-                <option value="Tổ 4">Tổ 4</option>
+                <option value="Tổ 1" ${targetGroup === 'Tổ 1' ? 'selected' : ''}>Tổ 1</option>
+                <option value="Tổ 2" ${targetGroup === 'Tổ 2' ? 'selected' : ''}>Tổ 2</option>
+                <option value="Tổ 3" ${targetGroup === 'Tổ 3' ? 'selected' : ''}>Tổ 3</option>
+                <option value="Tổ 4" ${targetGroup === 'Tổ 4' ? 'selected' : ''}>Tổ 4</option>
               </select>
             </div>
           </div>
@@ -1065,11 +1425,26 @@ function showLoginModal(){
       <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted p-0" onclick="resetDefaultCredentials()">
         <i class="fa-solid fa-rotate-left me-1"></i>Đặt lại mật khẩu mặc định (admin123 / 123456)
       </button>
-      <button type="button" class="btn btn-link btn-sm text-decoration-none text-secondary p-0" onclick="showGasGuideModal()">
-        <i class="fa-solid fa-cloud me-1"></i>Cấu hình Cloud
+      <button type="button" class="btn btn-link btn-sm text-decoration-none text-primary p-0" onclick="showShareLinksModal()">
+        <i class="fa-solid fa-share-nodes me-1"></i>Lấy link gửi GV & Tổ Trưởng
       </button>
     </div>
   `);
+
+  setTimeout(() => {
+    if (isPinActive) {
+      const pinInput = document.getElementById('pinLoginPin');
+      if (pinInput) { pinInput.focus(); pinInput.select(); }
+    } else {
+      const uInput = document.getElementById('loginUsername');
+      const pInput = document.getElementById('loginPassword');
+      if (uInput && !uInput.value) {
+        uInput.focus();
+      } else if (pInput) {
+        pInput.focus();
+      }
+    }
+  }, 200);
 }
 let isLoggingIn = false;
 async function handleLoginSubmit(e){
@@ -1475,14 +1850,19 @@ function logoutUser(){
     title: 'Đăng xuất?',
     text: 'Bạn có chắc chắn muốn đăng xuất tài khoản hiện tại?',
     showCancelButton: true,
-    confirmButtonText: 'Đăng xuất'
+    confirmButtonText: 'Đăng xuất',
+    cancelButtonText: 'Hủy'
   }).then(r => {
     if(r.isConfirmed){
       sessionStorage.removeItem('gvcn_user_session');
       localStorage.removeItem('gvcn_user_session');
       currentUser = null;
-      toast('Đã đăng xuất');
-      showLoginModal();
+      if(typeof window !== 'undefined') window.currentUser = null;
+      toast('Đã đăng xuất tài khoản');
+      buildNav();
+      renderHeader();
+      renderPage();
+      showLoginModal({ notice: 'Đã đăng xuất. Vui lòng chọn hoặc nhập tài khoản được cấp để tiếp tục.' });
     }
   });
 }
@@ -1585,14 +1965,34 @@ function renderHeader(){
     cs.title = 'Chuyển đổi lớp học (Quyền Quản trị viên)';
   }
 
-  let roleBadge = 'Giáo viên';
-  if(currentUser?.role === 'admin') roleBadge = 'Quản trị viên trường';
-  else if(currentUser?.role === 'group_leader') roleBadge = `Tổ Trưởng · ${currentUser.assignedGroup}`;
-  else if(currentUser?.role === 'teacher') roleBadge = 'GVCN ' + activeClass().name;
+  let roleBadge = 'Khách / Chưa đăng nhập';
+  let teacherName = 'Chưa đăng nhập';
+  if(currentUser){
+    teacherName = currentUser.fullname || 'Giáo viên';
+    if(currentUser.role === 'admin') roleBadge = 'Quản trị viên trường';
+    else if(currentUser.role === 'group_leader') roleBadge = `Tổ Trưởng · ${currentUser.assignedGroup}`;
+    else if(currentUser.role === 'teacher') roleBadge = 'GVCN ' + activeClass().name;
+  }
 
-  document.getElementById('teacherNameMini').textContent = currentUser?.fullname || state.teacher.name;
+  document.getElementById('teacherNameMini').textContent = teacherName;
   document.getElementById('teacherRoleMini').textContent = roleBadge;
-  document.getElementById('teacherAvatarMini').outerHTML = renderAvatar({ name: currentUser?.fullname || state.teacher.name, avatar: currentUser?.avatar || state.teacher.avatar },'avatar').replace('class="avatar"','class="avatar" id="teacherAvatarMini"');
+  const avatarObj = currentUser ? { name: currentUser.fullname || 'GV', avatar: currentUser.avatar } : { name: '?', avatar: '' };
+  document.getElementById('teacherAvatarMini').outerHTML = renderAvatar(avatarObj,'avatar').replace('class="avatar"','class="avatar" id="teacherAvatarMini"');
+
+  const loBtn = document.getElementById('logoutBtn');
+  if(loBtn){
+    if(!currentUser){
+      loBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-1"></i><span class="d-none d-sm-inline">Đăng nhập</span>';
+      loBtn.title = 'Đăng nhập vào tài khoản được cấp';
+      loBtn.className = 'btn btn-sm btn-primary';
+      loBtn.onclick = () => showLoginModal();
+    } else {
+      loBtn.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket"></i>';
+      loBtn.title = `Đăng xuất (${currentUser.username || ''})`;
+      loBtn.className = 'btn btn-sm btn-outline-danger';
+      loBtn.onclick = () => logoutUser();
+    }
+  }
 }
 function classStudentsFor(id){return state.students.filter(s=>s.classId===id)}
 function navigate(page){
@@ -1700,6 +2100,7 @@ function renderClasses(){
         <p>${isAdmin ? 'Nạp nhanh danh sách lớp bằng file Excel hoặc thêm từng lớp riêng lẻ.' : 'Theo dõi danh sách lớp học và thông tin phân công chủ nhiệm toàn trường.'}</p>
       </div>
       <div class="d-flex gap-2 flex-wrap align-items-center">
+        <button class="btn btn-outline-success" onclick="showShareLinksModal()"><i class="fa-solid fa-share-nodes me-1"></i>Lấy link đăng nhập các lớp</button>
         ${isAdmin ? `
           <button class="btn btn-outline-primary" onclick="navigate('accounts')"><i class="fa-solid fa-user-shield me-1"></i>Quản trị GVCN toàn trường</button>
           <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ GVCN</button>
@@ -1746,11 +2147,14 @@ function renderClasses(){
               ` : ''}
             </div>
             <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-              ${isMyClass ? `
-                <button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')"><i class="fa-solid fa-door-open me-1"></i>Vào không gian lớp</button>
-              ` : `
-                <button class="btn btn-sm btn-secondary" disabled title="Bạn không được phân công lớp này"><i class="fa-solid fa-lock me-1"></i>Không thể vào</button>
-              `}
+              <div class="d-flex gap-1">
+                ${isMyClass ? `
+                  <button class="btn btn-sm btn-outline-primary" onclick="switchClass('${c.id}')"><i class="fa-solid fa-door-open me-1"></i>Vào không gian lớp</button>
+                ` : `
+                  <button class="btn btn-sm btn-secondary" disabled title="Bạn không được phân công lớp này"><i class="fa-solid fa-lock me-1"></i>Không thể vào</button>
+                `}
+                <button class="btn btn-sm btn-outline-success" onclick="openClassShareModal('${c.id}')" title="Sao chép link đăng nhập cho GVCN và 4 Tổ Trưởng lớp này"><i class="fa-solid fa-share-nodes me-1"></i>Gửi link</button>
+              </div>
               <div>
                 ${isAdmin ? `
                   <button class="icon-btn d-inline-grid" title="Chỉnh sửa lớp" onclick="openClassModal('${c.id}')"><i class="fa-solid fa-pen"></i></button>
@@ -4062,6 +4466,7 @@ function renderAccounts(){
         <p>Quản lý toàn bộ thành viên ban quản trị: BGH / Admin, Giáo viên chủ nhiệm các khối lớp và Tổ Trưởng 4 tổ.</p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-success" onclick="showShareLinksModal()"><i class="fa-solid fa-share-nodes me-1"></i>Lấy link gửi Zalo</button>
         <button class="btn btn-outline-warning" onclick="resetDefaultCredentials()"><i class="fa-solid fa-key me-1"></i>Reset Pass Mặc Định</button>
         <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ Lớp & GVCN</button>
         <button class="btn btn-outline-primary" onclick="pullAccountsFromCloud()"><i class="fa-solid fa-cloud-arrow-down me-1"></i>Tải từ Cloud (Pull)</button>
@@ -4209,6 +4614,9 @@ function renderAccounts(){
                   </td>
                   <td class="text-end">
                     <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-success" title="Sao chép link gửi Zalo cho thành viên này" onclick="copyDirectLoginLink('${esc(a.username)}')">
+                        <i class="fa-solid fa-share-nodes"></i> Gửi link
+                      </button>
                       ${!isAdmin && !isLeader ? `
                         <button class="btn btn-outline-primary" title="Phân công / Đổi lớp chủ nhiệm" onclick="openAssignTeacherModal('${esc(a.username)}', '${esc(a.assignedClass || '')}')">
                           <i class="fa-solid fa-arrow-right-arrow-left"></i> Phân công
@@ -4962,6 +5370,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     buildNav();
     renderHeader();
     renderPage();
+  }
+  const handledDeepLink = handleUrlParams();
+  if(!currentUser && !handledDeepLink){
+    showLoginModal({ notice: 'Chào mừng bạn! Vui lòng chọn hoặc nhập tài khoản được cấp để bắt đầu làm việc.' });
   }
   document.getElementById('hiddenImport').addEventListener('change',e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value=''});
   if(state.settings?.gasApiUrl || localStorage.getItem('gas_api_url')){
