@@ -925,7 +925,29 @@ function copyDirectLoginLink(username){
 }
 
 function openClassShareModal(classId){
-  const cls = state.classes.find(c => c.id === classId) || activeClass();
+  if(!currentUser){
+    toast('Vui lòng đăng nhập để sử dụng chức năng này!', 'warning');
+    showLoginModal();
+    return;
+  }
+  const isTeacher = currentUser.role === 'teacher';
+  const isLeader = currentUser.role === 'group_leader';
+
+  if(isLeader){
+    toast('Tổ trưởng không có quyền chia sẻ liên kết của lớp!', 'warning');
+    return;
+  }
+
+  const assignedCls = currentUser.assignedClass || state.activeClassId;
+  const targetId = classId || assignedCls;
+
+  // GIÁO VIÊN: TUYỆT ĐỐI KHÔNG ĐƯỢC MỞ LỚP CỦA GIÁO VIÊN KHÁC!
+  if(isTeacher && targetId !== assignedCls && targetId !== activeClass().id){
+    toast('Bạn chỉ có quyền chia sẻ link cho lớp được phân công phụ trách!', 'warning');
+    return;
+  }
+
+  const cls = state.classes.find(c => c.id === targetId) || activeClass();
   const clean = cls.name.toLowerCase();
   const base = getBaseAppUrl();
   const teacherUser = `gv_${clean}`;
@@ -941,25 +963,24 @@ function openClassShareModal(classId){
   showModal(`Chia sẻ Link Đăng Nhập · Lớp ${esc(cls.name)}`, `
     <div class="text-start">
       <div class="alert alert-success py-2 small mb-3">
-        <i class="fa-solid fa-paper-plane me-1"></i><b>Gửi link cho GVCN hoặc Học sinh:</b> Người nhận chỉ cần bấm link là vào thẳng lớp <b>${esc(cls.name)}</b>, không sợ bị nhầm sang lớp khác!
+        <i class="fa-solid fa-paper-plane me-1"></i><b>Gửi đúng người, đúng lớp:</b> Bấm <b>Copy</b> để gửi link cho Giáo viên hoặc 4 Tổ Trưởng lớp <b>${esc(cls.name)}</b>.
       </div>
 
       <div class="card p-3 mb-3 border-primary">
-        <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-chalkboard-user me-1"></i>1. Link gửi Giáo viên Chủ nhiệm (${esc(cls.teacherName || 'GVCN ' + cls.name)})</h6>
-        <label class="form-label small text-muted mb-1">Tài khoản: <code>${teacherUser}</code> (hoặc gõ <code>${clean}</code>) · Pass: <code>123456</code></label>
+        <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-chalkboard-user me-1"></i>1. Link gửi Giáo viên (${esc(cls.teacherName || 'GVCN ' + cls.name)})</h6>
         <div class="input-group mb-2">
           <input class="form-control font-monospace form-control-sm bg-light" readonly value="${teacherLink}">
-          <button class="btn btn-outline-primary btn-sm fw-bold" onclick="copyToClipboard('${teacherLink}', 'Đã sao chép link gửi GVCN!')"><i class="fa-solid fa-copy me-1"></i>Copy Link</button>
+          <button class="btn btn-outline-primary btn-sm fw-bold" onclick="copyToClipboard('${teacherLink}', 'Đã sao chép link gửi Giáo viên!')"><i class="fa-solid fa-copy me-1"></i>Copy Link</button>
         </div>
         <div class="input-group">
           <span class="input-group-text small py-0 bg-light text-muted">Vào thẳng (1 chạm):</span>
           <input class="form-control font-monospace form-control-sm bg-light" readonly value="${teacherLinkAuto}">
-          <button class="btn btn-primary btn-sm fw-bold" onclick="copyToClipboard('${teacherLinkAuto}', 'Đã sao chép link 1-chạm gửi GVCN!')"><i class="fa-solid fa-bolt me-1"></i>Copy Link Tự Đăng Nhập</button>
+          <button class="btn btn-primary btn-sm fw-bold" onclick="copyToClipboard('${teacherLinkAuto}', 'Đã sao chép link 1-chạm!')"><i class="fa-solid fa-bolt me-1"></i>Copy Link Tự Đăng Nhập</button>
         </div>
       </div>
 
       <div class="card p-3 border">
-        <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-users me-1"></i>2. Link gửi 4 Tổ Trưởng (Đăng nhập bằng PIN 1234)</h6>
+        <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-users me-1"></i>2. Link gửi 4 Tổ Trưởng lớp ${esc(cls.name)}</h6>
         <div class="row g-2">
           <div class="col-md-6">
             <div class="p-2 border rounded bg-light">
@@ -1004,6 +1025,27 @@ function openClassShareModal(classId){
 }
 
 function showShareLinksModal(){
+  if(!currentUser){
+    toast('Vui lòng đăng nhập để chia sẻ link!', 'warning');
+    showLoginModal();
+    return;
+  }
+
+  // 1. TỔ TRƯỞNG: Không có quyền truy cập trung tâm chia sẻ
+  if(currentUser.role === 'group_leader'){
+    toast('Tổ trưởng không có quyền chia sẻ link toàn trường!', 'warning');
+    return;
+  }
+
+  // 2. GIÁO VIÊN: TUYỆT ĐỐI KHÔNG XEM HOẶC CHIA SẺ LINK ADMIN VÀ CÁC LỚP KHÁC
+  // Chỉ mở bảng chia sẻ cho lớp phụ trách của mình!
+  if(currentUser.role === 'teacher'){
+    const myClsId = (currentUser.assignedClass && currentUser.assignedClass !== '*') ? currentUser.assignedClass : state.activeClassId;
+    openClassShareModal(myClsId);
+    return;
+  }
+
+  // 3. CHỈ ADMIN (BAN GIÁM HIỆU) MỚI CÓ QUYỀN XEM TRUNG TÂM TOÀN TRƯỜNG & LINK ADMIN:
   const base = getBaseAppUrl();
   const adminLink = `${base}?u=admin`;
   const adminLinkAuto = `${base}?u=admin&p=admin123`;
@@ -1027,14 +1069,14 @@ function showShareLinksModal(){
   showModal('Trung Tâm Chia Sẻ Link Đăng Nhập Toàn Trường', `
     <div class="text-start">
       <div class="alert alert-info py-2 small mb-3">
-        <i class="fa-solid fa-circle-info me-1"></i><b>Gửi đúng người, đúng lớp:</b> Bấm <b>Copy</b> và dán link vào Zalo/Tin nhắn gửi cho từng Giáo viên hoặc Tổ Trưởng. Khi mở link, hệ thống sẽ đưa họ vào thẳng đúng lớp và tài khoản của họ!
+        <i class="fa-solid fa-shield-halved me-1"></i><b>Quyền Quản trị viên (BGH):</b> Bấm <b>Copy</b> và dán link gửi cho từng Giáo viên hoặc Tổ Trưởng các lớp.
       </div>
 
       <div class="card p-3 mb-3 border-danger">
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <h6 class="fw-bold text-danger m-0"><i class="fa-solid fa-user-shield me-1"></i>Link Quản Trị Viên (Ban Giám Hiệu)</h6>
-            <small class="text-muted">Tài khoản <code>admin</code> / pass: <code>admin123</code></small>
+            <small class="text-muted">Dành riêng cho Ban Giám Hiệu</small>
           </div>
           <div class="btn-group btn-group-sm">
             <button class="btn btn-outline-danger" onclick="copyToClipboard('${adminLink}', 'Đã copy link Admin!')"><i class="fa-solid fa-copy me-1"></i>Link thường</button>
@@ -1344,31 +1386,21 @@ function showLoginModal(options = {}){
   const classesList = state.classes && state.classes.length ? state.classes : [{ id: 'class_8a6', name: '8A6' }, { id: 'class_8a1', name: '8A1' }];
   const classOptions = classesList.map(c => `<option value="${c.id}" ${c.id === targetClass ? 'selected' : ''}>Lớp ${esc(c.name)}</option>`).join('');
 
-  const allAccounts = (state && Array.isArray(state.accounts) && state.accounts.length) ? state.accounts : DEFAULT_ACCOUNTS;
-  const teacherAccounts = allAccounts.filter(a => a.role === 'teacher' || a.role === 'admin');
-  const chipsHtml = teacherAccounts.map(a => {
-    const isCur = (targetUser || currentUser?.username) === a.username;
-    return `<button type="button" class="btn btn-sm ${isCur ? 'btn-primary text-white' : 'btn-outline-secondary'} py-1 px-2 text-nowrap font-monospace" onclick="quickSelectLoginAccount('${esc(a.username)}')">
-      <i class="fa-solid ${a.role==='admin'?'fa-crown text-warning':'fa-chalkboard-user text-primary'} me-1"></i>${esc(a.username)}
-    </button>`;
-  }).join(' ');
-
-  const initialUserVal = targetUser || (currentUser?.role !== 'group_leader' ? (currentUser?.username || '') : '');
   const isPinActive = isPin;
 
-  showModal('Hệ Thống Đăng Nhập Toàn Trường', `
+  showModal('Hệ Thống Đăng Nhập', `
     <div class="text-center mb-3">
       <div class="brand-logo mx-auto mb-2" style="width:52px; height:52px; font-size:1.25rem">THCS</div>
-      <h5 class="fw-bold m-0">THCS Quang Trung · Cổng Phân Quyền</h5>
-      <div class="text-muted small mt-1">Đăng nhập đúng vai trò: Giáo viên hoặc Tổ Trưởng để thao tác</div>
+      <h5 class="fw-bold m-0">THCS Quang Trung · Cổng Đăng Nhập</h5>
+      <div class="text-muted small mt-1">Đăng nhập tài khoản được cấp để tiếp tục</div>
     </div>
 
-    ${customNotice ? `<div class="alert alert-info py-2 small mb-3"><i class="fa-solid fa-link me-1"></i>${customNotice}</div>` : ''}
+    ${customNotice ? `<div class="alert alert-info py-2 small mb-3"><i class="fa-solid fa-circle-info me-1"></i>${customNotice}</div>` : ''}
 
     <ul class="nav nav-pills nav-fill mb-3" id="loginTabs" role="tablist">
       <li class="nav-item" role="presentation">
         <button class="nav-link ${isPinActive ? '' : 'active'} fw-bold" id="teacher-tab" data-bs-toggle="pill" data-bs-target="#tab-teacher" type="button" role="tab">
-          <i class="fa-solid fa-chalkboard-user me-1"></i>Giáo viên / Admin
+          <i class="fa-solid fa-chalkboard-user me-1"></i>Giáo viên / Quản trị
         </button>
       </li>
       <li class="nav-item" role="presentation">
@@ -1386,7 +1418,7 @@ function showLoginModal(options = {}){
             <label class="form-label fw-bold">Tên đăng nhập *</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-              <input id="loginUsername" class="form-control font-monospace fw-bold" required placeholder="admin hoặc gv_8a3" value="${esc(initialUserVal)}">
+              <input id="loginUsername" class="form-control font-monospace fw-bold" required placeholder="Nhập tên đăng nhập" value="${esc(targetUser)}">
             </div>
           </div>
           <div class="mb-3">
@@ -1400,23 +1432,10 @@ function showLoginModal(options = {}){
             </div>
           </div>
 
-          <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label class="form-label fw-bold m-0 small text-muted"><i class="fa-solid fa-bolt me-1 text-warning"></i>Bấm chọn nhanh tài khoản:</label>
-            </div>
-            <div class="d-flex flex-wrap gap-1 p-2 bg-light rounded border" style="max-height:80px; overflow-y:auto;">
-              ${chipsHtml}
-            </div>
+          <button type="submit" id="btnTeacherLoginSubmit" class="btn btn-primary w-100 py-2 fw-bold" onclick="handleLoginSubmit(event)"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập</button>
+          <div class="text-center text-muted small mt-2">
+            <i class="fa-solid fa-shield-halved me-1"></i>Hệ thống bảo mật trường học · Vui lòng sử dụng tài khoản được cấp phát.
           </div>
-
-          <div class="alert alert-light border small py-2 mb-3">
-            <b>Tài khoản mặc định:</b><br>
-            • Admin: <code>admin</code> / pass: <code>admin123</code> (Toàn quyền các lớp)<br>
-            • GVCN 8A6: <code>gv_8a6</code> (hoặc gõ <code>8a6</code>) / pass: <code>123456</code><br>
-            • GVCN các lớp khác: <code>gv_[mã lớp]</code> hoặc gõ tên lớp (VD: <code>8a3</code>) / pass: <code>123456</code><br>
-            • Tổ Trưởng: chuyển sang tab <b>Tổ Trưởng (Mã PIN)</b> / PIN: <code>1234</code>.
-          </div>
-          <button type="submit" id="btnTeacherLoginSubmit" class="btn btn-primary w-100 py-2 fw-bold" onclick="handleLoginSubmit(event)"><i class="fa-solid fa-right-to-bracket me-1"></i>Đăng nhập Giáo viên</button>
         </form>
       </div>
 
@@ -1441,31 +1460,19 @@ function showLoginModal(options = {}){
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-bold">Mã PIN 4 số của Tổ trưởng *</label>
+            <label class="form-label fw-bold">Mã PIN Tổ trưởng *</label>
             <div class="input-group">
               <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-              <input id="pinLoginPin" type="password" maxlength="6" class="form-control font-monospace text-center fs-5 fw-bold" required placeholder="1234" value="1234">
+              <input id="pinLoginPin" type="password" maxlength="6" class="form-control font-monospace text-center fs-5 fw-bold" required placeholder="Nhập mã PIN" value="">
               <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordInput('pinLoginPin', this)" title="Hiện / Ẩn mã PIN">
                 <i class="fa-solid fa-eye"></i>
               </button>
             </div>
-            <div class="form-text text-muted text-center mt-1"><i class="fa-solid fa-circle-info me-1"></i>Mã PIN mặc định ban đầu là <b>1234</b> hoặc do GVCN cung cấp.</div>
-          </div>
-          <div class="alert alert-warning small py-2 mb-3">
-            <i class="fa-solid fa-shield-halved me-1"></i><b>Quyền hạn Tổ Trưởng:</b> Chỉ được xem và chấm điểm các bạn trong tổ của mình; không xem được CCCD và dữ liệu cá nhân nhạy cảm.
+            <div class="form-text text-muted text-center mt-1"><i class="fa-solid fa-circle-info me-1"></i>Nhập mã PIN do Giáo viên chủ nhiệm cung cấp.</div>
           </div>
           <button type="submit" id="btnPinLoginSubmit" class="btn btn-success w-100 py-2 fw-bold" onclick="handlePinLoginSubmit(event)"><i class="fa-solid fa-key me-1"></i>Đăng nhập Tổ Trưởng</button>
         </form>
       </div>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-      <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted p-0" onclick="resetDefaultCredentials()">
-        <i class="fa-solid fa-rotate-left me-1"></i>Đặt lại mật khẩu mặc định (admin123 / 123456)
-      </button>
-      <button type="button" class="btn btn-link btn-sm text-decoration-none text-primary p-0" onclick="showShareLinksModal()">
-        <i class="fa-solid fa-share-nodes me-1"></i>Lấy link gửi GV & Tổ Trưởng
-      </button>
     </div>
   `);
 
@@ -1616,22 +1623,9 @@ async function handleLoginSubmit(e){
     Swal.fire({
       icon: 'error',
       title: 'Đăng nhập thất bại',
-      html: `<div class="text-start">
+      html: `<div class="text-center">
         <p class="mb-2 text-danger fw-bold">${cloudErrorMsg || 'Tên đăng nhập hoặc mật khẩu không chính xác.'}</p>
-        <div class="alert alert-warning small py-2 mb-3">
-          <i class="fa-solid fa-circle-info me-1"></i><b>Mật khẩu mặc định hệ thống:</b>
-          <ul class="mb-0 ps-3 mt-1">
-            <li>Admin: tài khoản <code>admin</code> / pass: <code>admin123</code>.</li>
-            <li>GVCN 8A6: tài khoản <code>gv_8a6</code> / pass: <code>123456</code>.</li>
-            <li>Các GVCN khác: tài khoản <code>gv_[mã lớp]</code> hoặc <code>8a3</code> / pass: <code>123456</code>.</li>
-            <li>Tổ Trưởng: chọn tab <b>Tổ Trưởng</b> / PIN: <code>1234</code>.</li>
-          </ul>
-        </div>
-        <div class="text-center">
-          <button type="button" class="btn btn-warning w-100 py-2 fw-bold" onclick="resetDefaultCredentials()">
-            <i class="fa-solid fa-rotate-left me-1"></i>Khôi phục toàn bộ mật khẩu mặc định (admin123 / 123456)
-          </button>
-        </div>
+        <div class="small text-muted">Vui lòng kiểm tra lại thông tin hoặc liên hệ Quản trị viên để được hỗ trợ.</div>
       </div>`
     });
   } finally {
@@ -1739,14 +1733,9 @@ async function handlePinLoginSubmit(e){
     Swal.fire({
       icon: 'error',
       title: 'Mã PIN không chính xác',
-      html: `<div class="text-start">
-        <p class="mb-2 text-danger">${cloudErrorMsg || `Mã PIN không đúng cho ${group} của lớp đang chọn.`}</p>
-        <div class="alert alert-warning small py-2 mb-2">
-          Mã PIN mặc định cho Tổ Trưởng là <b>1234</b>.
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-warning w-100" onclick="resetDefaultCredentials()">
-          <i class="fa-solid fa-rotate-left me-1"></i>Khôi phục mã PIN gốc (1234)
-        </button>
+      html: `<div class="text-center">
+        <p class="mb-2 text-danger fw-bold">${cloudErrorMsg || `Mã PIN không đúng cho ${group} của lớp đang chọn.`}</p>
+        <div class="small text-muted">Vui lòng kiểm tra lại mã PIN hoặc liên hệ Giáo viên chủ nhiệm để được cấp lại mã PIN.</div>
       </div>`
     });
   } finally {
@@ -2031,6 +2020,21 @@ function renderHeader(){
       loBtn.onclick = () => logoutUser();
     }
   }
+
+  const shareBtn = document.getElementById('shareLinksBtn');
+  if(shareBtn){
+    if(!currentUser || currentUser.role === 'group_leader'){
+      shareBtn.style.display = 'none';
+    } else if(currentUser.role === 'teacher'){
+      shareBtn.style.display = '';
+      shareBtn.title = `Lấy link gửi lớp ${activeClass().name}`;
+      shareBtn.innerHTML = `<i class="fa-solid fa-share-nodes me-1"></i><span class="d-none d-md-inline">Link lớp ${esc(activeClass().name)}</span>`;
+    } else {
+      shareBtn.style.display = '';
+      shareBtn.title = 'Lấy link đăng nhập toàn trường';
+      shareBtn.innerHTML = '<i class="fa-solid fa-share-nodes me-1"></i><span class="d-none d-md-inline">Lấy link gửi</span>';
+    }
+  }
 }
 function classStudentsFor(id){return state.students.filter(s=>s.classId===id)}
 function navigate(page){
@@ -2138,18 +2142,19 @@ function renderClasses(){
         <p>${isAdmin ? 'Nạp nhanh danh sách lớp bằng file Excel hoặc thêm từng lớp riêng lẻ.' : 'Theo dõi danh sách lớp học và thông tin phân công chủ nhiệm toàn trường.'}</p>
       </div>
       <div class="d-flex gap-2 flex-wrap align-items-center">
-        <button class="btn btn-outline-success" onclick="showShareLinksModal()"><i class="fa-solid fa-share-nodes me-1"></i>Lấy link đăng nhập các lớp</button>
         ${isAdmin ? `
+          <button class="btn btn-outline-success" onclick="showShareLinksModal()"><i class="fa-solid fa-share-nodes me-1"></i>Lấy link đăng nhập các lớp</button>
           <button class="btn btn-outline-primary" onclick="navigate('accounts')"><i class="fa-solid fa-user-shield me-1"></i>Quản trị GVCN toàn trường</button>
           <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ GVCN</button>
           <button class="btn btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-file-arrow-down me-1"></i>Tải mẫu Excel</button>
           <button class="btn btn-success" onclick="openImportClassesModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập lớp từ Excel</button>
           <button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button>
-        ` : `
+        ` : isTeacher ? `
+          <button class="btn btn-outline-success" onclick="openClassShareModal('${activeClass().id}')"><i class="fa-solid fa-share-nodes me-1"></i>Lấy link gửi lớp ${esc(activeClass().name)}</button>
           <span class="badge bg-primary-subtle text-primary border p-2 fs-6">
             <i class="fa-solid fa-chalkboard-user me-1"></i>Lớp chủ nhiệm được phân công: <b>${esc(activeClass().name)}</b>
           </span>
-        `}
+        ` : ''}
       </div>
     </div>
     <div class="student-grid">
@@ -2191,7 +2196,9 @@ function renderClasses(){
                 ` : `
                   <button class="btn btn-sm btn-secondary" disabled title="Bạn không được phân công lớp này"><i class="fa-solid fa-lock me-1"></i>Không thể vào</button>
                 `}
-                <button class="btn btn-sm btn-outline-success" onclick="openClassShareModal('${c.id}')" title="Sao chép link đăng nhập cho GVCN và 4 Tổ Trưởng lớp này"><i class="fa-solid fa-share-nodes me-1"></i>Gửi link</button>
+                ${(isAdmin || (isTeacher && isMyClass)) ? `
+                  <button class="btn btn-sm btn-outline-success" onclick="openClassShareModal('${c.id}')" title="Sao chép link đăng nhập cho GVCN và 4 Tổ Trưởng lớp này"><i class="fa-solid fa-share-nodes me-1"></i>Gửi link</button>
+                ` : ''}
               </div>
               <div>
                 ${isAdmin ? `
