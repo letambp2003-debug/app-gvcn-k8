@@ -166,6 +166,9 @@ function doPost(e) {
         return handleDeleteClass(payload);
       case 'get_all_accounts':
         return handleGetAllAccounts(payload);
+      case 'sync_all_accounts':
+      case 'push_accounts':
+        return handleSyncAllAccounts(payload);
       case 'save_account':
         return handleSaveAccount(payload);
       case 'update_teacher_password':
@@ -1078,8 +1081,14 @@ function inferGradeFromName(name) {
  */
 function handleGetAllAccounts(payload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEETS.USERS);
-  if (!sheet) return createJsonResponse({ status: 'error', message: 'Không tìm thấy bảng Tài khoản!' });
+  let sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.USERS);
+    sheet.appendRow(['username', 'password', 'fullname', 'role', 'assigned_class', 'assigned_group', 'status']);
+    sheet.appendRow(['admin', 'admin123', 'Ban Giám Hiệu', 'admin', '*', '*', 'active']);
+    sheet.appendRow(['gv_8a6', '123456', 'Lê Tâm (GVCN 8A6)', 'teacher', 'class_8a6', '*', 'active']);
+    formatHeader(sheet);
+  }
 
   const data = sheet.getDataRange().getValues();
   const accounts = [];
@@ -1104,6 +1113,67 @@ function handleGetAllAccounts(payload) {
     status: 'success',
     accounts: accounts,
     total: accounts.length
+  });
+}
+
+/**
+ * 14b. ĐỒNG BỘ TOÀN BỘ TÀI KHOẢN TỪ CLIENT LÊN GOOGLE SHEETS (UPSERT)
+ */
+function handleSyncAllAccounts(payload) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.USERS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.USERS);
+    sheet.appendRow(['username', 'password', 'fullname', 'role', 'assigned_class', 'assigned_group', 'status']);
+    formatHeader(sheet);
+  }
+
+  const incomingAccounts = Array.isArray(payload.accounts) ? payload.accounts : [];
+  const data = sheet.getDataRange().getValues();
+  const existingMap = new Map();
+  for (let i = 1; i < data.length; i++) {
+    const u = String(data[i][0] || '').trim().toLowerCase();
+    if (u) existingMap.set(u, i + 1);
+  }
+
+  let updatedCount = 0;
+  let createdCount = 0;
+
+  incomingAccounts.forEach(acc => {
+    const u = String(acc.username || '').trim().toLowerCase();
+    if (!u) return;
+    const pwd = String(acc.password || acc.pin || '123456').trim();
+    const fn = String(acc.fullname || u).trim();
+    const role = String(acc.role || 'teacher').trim();
+    const cls = String(acc.assignedClass || '*').trim();
+    const grp = String(acc.assignedGroup || '*').trim();
+    const status = String(acc.status || 'active').trim();
+
+    if (existingMap.has(u)) {
+      const rowIdx = existingMap.get(u);
+      sheet.getRange(rowIdx, 3).setValue(fn);
+      sheet.getRange(rowIdx, 4).setValue(role);
+      sheet.getRange(rowIdx, 5).setValue(cls);
+      sheet.getRange(rowIdx, 6).setValue(grp);
+      sheet.getRange(rowIdx, 7).setValue(status);
+      if (pwd) {
+        sheet.getRange(rowIdx, 2).setNumberFormat('@').setValue(String(pwd));
+      }
+      updatedCount++;
+    } else {
+      sheet.appendRow([u, String(pwd), fn, role, cls, grp, status]);
+      sheet.getRange(sheet.getLastRow(), 2).setNumberFormat('@').setValue(String(pwd));
+      existingMap.set(u, sheet.getLastRow());
+      createdCount++;
+    }
+  });
+
+  return createJsonResponse({
+    status: 'success',
+    message: `Đồng bộ thành công! Đã tạo mới ${createdCount} tài khoản, cập nhật ${updatedCount} tài khoản trên Google Sheets.`,
+    created: createdCount,
+    updated: updatedCount,
+    total: existingMap.size
   });
 }
 

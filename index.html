@@ -564,20 +564,35 @@ let state=loadState();
 let chartRefs=[]; let mainModal; let countdownInterval=null; let countdown={total:300,left:300,running:false}; let quietInterval=null; let quietLeft=0; let micCtx=null,micStream=null,micRAF=null;
 
 
-function ensureLocalAccountsForClass(classId, className, teacherName) {
-  if (!classId) return false;
-  let didAdd = false;
-  const cleanSuffix = classId.replace(/^class_/, '').toLowerCase();
-  const teacherUser = `gv_${cleanSuffix}`;
-  const teacherDisplay = teacherName ? `${teacherName} (GVCN ${className})` : `GVCN ${className}`;
-  
-  if (state && Array.isArray(state.accounts)) {
-    let existingTeacher = state.accounts.find(a => a.username.toLowerCase() === teacherUser);
-    if (existingTeacher) {
-      if (teacherName && (!existingTeacher.fullname || existingTeacher.fullname.startsWith('GVCN '))) {
-        existingTeacher.fullname = teacherDisplay;
+function syncClassesAndAccounts(forceUpdateNames = true) {
+  if (!state || !Array.isArray(state.classes)) return false;
+  state.accounts = state.accounts || [];
+  let didChange = false;
+  const currentClassIds = new Set(state.classes.map(c => c.id));
+
+  // 1. Quét từng lớp trong state.classes để tạo/cập nhật GVCN và 4 Tổ Trưởng
+  state.classes.forEach(c => {
+    const cleanSuffix = c.id.replace(/^class_/, '').toLowerCase();
+    const teacherUser = `gv_${cleanSuffix}`;
+    const cleanTeacherName = String(c.teacherName || '').trim();
+    const hasTeacher = cleanTeacherName && cleanTeacherName !== 'Chưa phân công' && cleanTeacherName !== 'Chưa có GVCN';
+    const teacherDisplay = hasTeacher ? `${cleanTeacherName} (GVCN ${c.name})` : `GVCN ${c.name}`;
+
+    // 1.1 Cập nhật hoặc thêm mới tài khoản GVCN
+    let tAcc = state.accounts.find(a => a.username.toLowerCase() === teacherUser);
+    if (!tAcc) {
+      tAcc = state.accounts.find(a => a.role === 'teacher' && a.assignedClass === c.id);
+    }
+
+    if (tAcc) {
+      if (tAcc.assignedClass !== c.id) {
+        tAcc.assignedClass = c.id;
+        didChange = true;
       }
-      existingTeacher.assignedClass = classId;
+      if (forceUpdateNames && hasTeacher && tAcc.fullname !== teacherDisplay) {
+        tAcc.fullname = teacherDisplay;
+        didChange = true;
+      }
     } else {
       state.accounts.push({
         id: uid('acc'),
@@ -585,76 +600,114 @@ function ensureLocalAccountsForClass(classId, className, teacherName) {
         password: '123456',
         fullname: teacherDisplay,
         role: 'teacher',
-        assignedClass: classId,
+        assignedClass: c.id,
         assignedGroup: '*',
         status: 'active',
         phone: '',
         updatedAt: new Date().toISOString()
       });
-      didAdd = true;
+      didChange = true;
     }
 
+    // 1.2 Đảm bảo đủ 4 tài khoản Tổ Trưởng cho lớp này
     ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'].forEach((grp, idx) => {
       const tNum = idx + 1;
       const ttUser = `totruong_${cleanSuffix}_t${tNum}`;
-      const exists = state.accounts.some(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === grp);
-      if (!exists) {
+      let ttAcc = state.accounts.find(a => a.role === 'group_leader' && a.assignedClass === c.id && a.assignedGroup === grp);
+      if (!ttAcc) {
+        ttAcc = state.accounts.find(a => a.username.toLowerCase() === ttUser);
+      }
+      if (ttAcc) {
+        if (ttAcc.assignedClass !== c.id || ttAcc.assignedGroup !== grp) {
+          ttAcc.assignedClass = c.id;
+          ttAcc.assignedGroup = grp;
+          didChange = true;
+        }
+      } else {
         state.accounts.push({
           id: uid('acc'),
           username: ttUser,
           password: '1234',
-          fullname: `Tổ Trưởng ${grp} (${className})`,
+          fullname: `Tổ Trưởng ${grp} (${c.name})`,
           role: 'group_leader',
-          assignedClass: classId,
+          assignedClass: c.id,
           assignedGroup: grp,
           status: 'active',
           phone: '',
           updatedAt: new Date().toISOString()
         });
-        didAdd = true;
+        didChange = true;
       }
     });
-  }
+  });
 
-  let existingTeacherDef = DEFAULT_ACCOUNTS.find(a => a.username.toLowerCase() === teacherUser);
-  if (existingTeacherDef) {
-    if (teacherName) existingTeacherDef.fullname = teacherDisplay;
-  } else {
-    DEFAULT_ACCOUNTS.push({
-      username: teacherUser,
-      password: '123456',
-      fullname: teacherDisplay,
-      role: 'teacher',
-      assignedClass: classId,
-      assignedGroup: '*'
-    });
-  }
+  // 2. Dọn dẹp tài khoản mồ côi (khi lớp học đã bị xóa)
+  const prevAccCount = state.accounts.length;
+  state.accounts = state.accounts.filter(a => {
+    if (a.role === 'group_leader' && a.assignedClass !== '*' && !currentClassIds.has(a.assignedClass)) {
+      return false; // Thu hồi tài khoản tổ trưởng của lớp đã bị xóa
+    }
+    return true;
+  });
+  if (state.accounts.length !== prevAccCount) didChange = true;
 
-  ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'].forEach((grp, idx) => {
-    const tNum = idx + 1;
-    const ttUser = `totruong_${cleanSuffix}_t${tNum}`;
-    const exists = DEFAULT_ACCOUNTS.some(a => a.role === 'group_leader' && a.assignedClass === classId && a.assignedGroup === grp);
-    if (!exists) {
+  // Giáo viên chủ nhiệm của lớp bị xóa: chuyển sang trạng thái "Chưa phân công lớp" (*)
+  state.accounts.forEach(a => {
+    if (a.role === 'teacher' && a.assignedClass !== '*' && !currentClassIds.has(a.assignedClass)) {
+      a.assignedClass = '*';
+      a.fullname = a.fullname.replace(/\(GVCN [^)]+\)/, '').trim();
+      didChange = true;
+    }
+  });
+
+  // 3. Khử trùng lặp tài khoản (Deduplication)
+  const accMap = new Map();
+  state.accounts.forEach(a => {
+    const u = a.username.toLowerCase();
+    if (!accMap.has(u)) {
+      accMap.set(u, a);
+    } else {
+      const existing = accMap.get(u);
+      accMap.set(u, Object.assign({}, existing, a));
+      didChange = true;
+    }
+  });
+  state.accounts = Array.from(accMap.values());
+
+  // 4. Đồng bộ vào DEFAULT_ACCOUNTS
+  state.accounts.forEach(a => {
+    const dIdx = DEFAULT_ACCOUNTS.findIndex(def => def.username.toLowerCase() === a.username.toLowerCase());
+    if (dIdx >= 0) {
+      Object.assign(DEFAULT_ACCOUNTS[dIdx], {
+        fullname: a.fullname,
+        password: a.password,
+        pin: a.password || a.pin,
+        assignedClass: a.assignedClass,
+        assignedGroup: a.assignedGroup
+      });
+    } else {
       DEFAULT_ACCOUNTS.push({
-        username: ttUser,
-        pin: '1234',
-        fullname: `Tổ Trưởng ${grp} (${className})`,
-        role: 'group_leader',
-        assignedClass: classId,
-        assignedGroup: grp
+        username: a.username,
+        password: a.password,
+        pin: a.password || a.pin,
+        fullname: a.fullname,
+        role: a.role,
+        assignedClass: a.assignedClass,
+        assignedGroup: a.assignedGroup
       });
     }
   });
 
-  return didAdd;
+  if (didChange) {
+    saveState(false);
+  }
+  return didChange;
 }
-if(state && Array.isArray(state.classes)){
-  let needPersist = false;
-  state.classes.forEach(c => {
-    if (ensureLocalAccountsForClass(c.id, c.name, c.teacherName)) needPersist = true;
-  });
-  if (needPersist) saveState(false);
+
+function ensureLocalAccountsForClass(classId, className, teacherName) {
+  return syncClassesAndAccounts(true);
 }
+syncClassesAndAccounts(true);
 
 let currentUser = loadUserSession();
 function loadUserSession(){
@@ -1185,6 +1238,7 @@ function renderClasses(){
       </div>
       <div class="d-flex gap-2 flex-wrap">
         ${currentUser?.role === 'admin' ? '<button class="btn btn-outline-primary" onclick="navigate(\'accounts\')"><i class="fa-solid fa-user-shield me-1"></i>Quản trị GVCN toàn trường</button>' : ''}
+        <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ GVCN</button>
         <button class="btn btn-outline-success" onclick="downloadClassesExcelTemplate()"><i class="fa-solid fa-file-arrow-down me-1"></i>Tải mẫu Excel</button>
         <button class="btn btn-success" onclick="openImportClassesModal()"><i class="fa-solid fa-file-excel me-1"></i>Nhập lớp từ Excel</button>
         <button class="btn btn-primary" onclick="openClassModal()"><i class="fa-solid fa-plus me-1"></i>Tạo lớp học mới</button>
@@ -1347,6 +1401,7 @@ async function deleteClass(id){
   state.filmExcluded = state.filmExcluded.filter(x => !studentIds.includes(x));
   state.wheelSelected = (state.wheelSelected || []).filter(x => !studentIds.includes(x));
   if(state.activeClassId === id) state.activeClassId = state.classes[0].id;
+  syncClassesAndAccounts(false);
   saveState();
   buildNav();
   renderHeader();
@@ -1563,13 +1618,15 @@ async function confirmClassesExcelImport(){
     });
   }
 
-  // Đảm bảo sơ đồ chỗ ngồi và tài khoản cho tất cả các lớp
+  // Đảm bảo sơ đồ chỗ ngồi cho tất cả các lớp
   state.classes.forEach(c => {
     if(!state.seating[c.id]){
       state.seating[c.id] = { lanes: 4, seats: 8, mode: '2d', assignments: {} };
     }
-    ensureLocalAccountsForClass(c.id, c.name, c.teacherName);
   });
+
+  // Đồng bộ toàn bộ tài khoản GVCN và Tổ Trưởng tương ứng với danh sách lớp
+  syncClassesAndAccounts(true);
 
   if(!state.classes.some(c => c.id === state.activeClassId)){
     state.activeClassId = state.classes[0].id;
@@ -1594,6 +1651,11 @@ async function confirmClassesExcelImport(){
     })),
     mode: isOverwrite ? 'overwrite' : 'merge'
   });
+
+  // Tự động đẩy danh sách tài khoản mới lên bảng USERS trên Cloud (nếu có cấu hình)
+  if (state.settings?.gasApiUrl || localStorage.getItem('gas_api_url')) {
+    callGasApi('sync_all_accounts', { accounts: state.accounts });
+  }
 }
 
 function maskCCCD(c){
@@ -2584,11 +2646,23 @@ async function saveGroupPins(e){
     if(grp && pin) updates.push({ group: grp, pin: pin });
   });
 
-  // Cập nhật DEFAULT_ACCOUNTS cục bộ
+  // Cập nhật DEFAULT_ACCOUNTS và state.accounts cục bộ
   updates.forEach(u => {
     const acc = DEFAULT_ACCOUNTS.find(a => a.assignedClass === state.activeClassId && a.assignedGroup === u.group);
-    if(acc) acc.pin = u.pin;
+    if(acc) {
+      acc.pin = u.pin;
+      acc.password = u.pin;
+    }
+    if (state && Array.isArray(state.accounts)) {
+      const sAcc = state.accounts.find(a => a.role === 'group_leader' && a.assignedClass === state.activeClassId && a.assignedGroup === u.group);
+      if(sAcc) {
+        sAcc.password = u.pin;
+        sAcc.pin = u.pin;
+        sAcc.updatedAt = new Date().toISOString();
+      }
+    }
   });
+  saveState();
 
   mainModal.hide();
   toast('Đang lưu mã PIN...');
@@ -3331,10 +3405,13 @@ function renderAccounts(){
         <p>Phân công giáo viên chủ nhiệm cho từng lớp, tạo tài khoản và cấp mật khẩu trực tiếp.</p>
       </div>
       <div class="d-flex gap-2 flex-wrap">
-        <button class="btn btn-outline-success" onclick="exportTeacherAccountsExcel()"><i class="fa-solid fa-file-excel me-1"></i>Xuất danh sách cấp mật khẩu</button>
+        <button class="btn btn-outline-info" onclick="syncClassesAndAccounts(true); renderPage(); toast('Đã đồng bộ liên thông Lớp học & GVCN!');"><i class="fa-solid fa-rotate me-1"></i>Đồng bộ Lớp & GVCN</button>
+        <button class="btn btn-outline-primary" onclick="pullAccountsFromCloud()"><i class="fa-solid fa-cloud-arrow-down me-1"></i>Tải từ Cloud (Pull)</button>
+        <button class="btn btn-outline-success" onclick="pushAccountsToCloud()"><i class="fa-solid fa-cloud-arrow-up me-1"></i>Đẩy lên Cloud (Push All)</button>
+        <button class="btn btn-outline-secondary" onclick="showGasGuideModal()"><i class="fa-solid fa-circle-question me-1"></i>Hướng dẫn Cloud</button>
+        <button class="btn btn-outline-dark" onclick="exportTeacherAccountsExcel()"><i class="fa-solid fa-file-excel me-1"></i>Xuất Excel</button>
         <button class="btn btn-outline-primary" onclick="openAssignTeacherModal()"><i class="fa-solid fa-arrow-right-arrow-left me-1"></i>Phân công nhanh GVCN</button>
         <button class="btn btn-primary" onclick="openCreateTeacherModal()"><i class="fa-solid fa-user-plus me-1"></i>Thêm giáo viên mới</button>
-        <button class="btn btn-outline-secondary" onclick="pullAccountsFromCloud()"><i class="fa-solid fa-cloud-arrow-down me-1"></i>Đồng bộ Cloud</button>
       </div>
     </div>
 
@@ -4021,7 +4098,7 @@ async function pullAccountsFromCloud(){
 
   Swal.fire({
     title: 'Đang tải danh sách tài khoản...',
-    text: 'Đang đồng bộ từ Google Sheets...',
+    text: 'Đang kết nối Google Sheets...',
     allowOutsideClick: false,
     didOpen: () => Swal.showLoading()
   });
@@ -4043,6 +4120,7 @@ async function pullAccountsFromCloud(){
       }
     });
 
+    syncClassesAndAccounts(false);
     saveState();
     Swal.fire({
       icon: 'success',
@@ -4051,12 +4129,134 @@ async function pullAccountsFromCloud(){
     });
     renderPage();
   } else {
+    // Phát hiện trường hợp Google Apps Script của người dùng chưa có hàm get_all_accounts
+    if (res?.message?.includes('get_all_accounts') || res?.message?.includes('Hành động không hợp lệ')) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Cần cập nhật bản triển khai Google Apps Script',
+        html: `
+          <div class="text-start">
+            <p>Trang tính Google Sheets của bạn đang chạy phiên bản Apps Script cũ (chưa kích hoạt hàm <code>get_all_accounts</code>).</p>
+            <p><b>Bạn có thể chọn 1 trong 2 giải pháp tiện lợi sau:</b></p>
+            <div class="d-grid gap-2 mt-3">
+              <button class="btn btn-success" onclick="Swal.close(); pushAccountsToCloud();">
+                <i class="fa-solid fa-cloud-arrow-up me-1"></i>Đẩy toàn bộ tài khoản hiện tại lên Cloud trước (Push All)
+              </button>
+              <button class="btn btn-outline-primary" onclick="Swal.close(); showGasGuideModal();">
+                <i class="fa-solid fa-code me-1"></i>Xem hướng dẫn cập nhật mã Apps Script (1 phút)
+              </button>
+            </div>
+          </div>
+        `,
+        showConfirmButton: false,
+        showCancelButton: true,
+        cancelButtonText: 'Đóng'
+      });
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Đồng bộ thất bại',
+        text: res?.message || 'Không thể lấy dữ liệu từ Google Sheets.'
+      });
+    }
+  }
+}
+
+async function pushAccountsToCloud(){
+  const url = state.settings?.gasApiUrl || localStorage.getItem('gas_api_url');
+  if (!url) return toast('Chưa cài đặt link Google Apps Script URL', 'warning');
+
+  // Đảm bảo dữ liệu chuẩn hóa trước khi đẩy
+  syncClassesAndAccounts(false);
+  const accountsToPush = state.accounts || [];
+
+  Swal.fire({
+    title: 'Đang đẩy tài khoản lên Cloud...',
+    html: `Đang gửi <b>${accountsToPush.length}</b> tài khoản lên Google Sheets...<br><div class="progress mt-2" style="height:6px"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div></div>`,
+    allowOutsideClick: false,
+    showConfirmButton: false,
+    didOpen: () => Swal.showLoading()
+  });
+
+  // 1. Thử gửi đồng loạt bulk bằng sync_all_accounts (phiên bản tối ưu)
+  let res = await callGasApi('sync_all_accounts', { accounts: accountsToPush });
+
+  // 2. Fallback nếu Apps Script bản cũ chưa có sync_all_accounts: gửi từng tài khoản qua save_account
+  if (!res || res.status !== 'success') {
+    if (res?.message?.includes('Hành động không hợp lệ') || res?.message?.includes('sync_all_accounts')) {
+      Swal.fire({
+        title: 'Đang chuyển chế độ gửi tương thích...',
+        html: 'Google Apps Script đang ở phiên bản cũ, hệ thống tự động đẩy từng tài khoản lên bảng tính...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      let successCount = 0;
+      for (const acc of accountsToPush) {
+        const singleRes = await callGasApi('save_account', { accountData: acc });
+        if (singleRes && singleRes.status === 'success') successCount++;
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Đã hoàn tất gửi dữ liệu!',
+        html: `Đã đồng bộ <b>${successCount}/${accountsToPush.length}</b> tài khoản lên Google Sheets qua cổng tương thích.<br><br><button class="btn btn-sm btn-outline-primary" onclick="showGasGuideModal()"><i class="fa-solid fa-circle-question me-1"></i>Xem cách cập nhật Apps Script để chạy nhanh tức thì</button>`
+      });
+      return;
+    }
+  }
+
+  if (res && res.status === 'success') {
+    Swal.fire({
+      icon: 'success',
+      title: 'Đồng bộ Cloud thành công!',
+      html: `Đã đồng bộ <b>${accountsToPush.length}</b> tài khoản (Admin, GVCN, Tổ Trưởng) lên bảng <code>${res.sheetName || 'USERS'}</code> của Google Sheets!`
+    });
+  } else {
     Swal.fire({
       icon: 'error',
-      title: 'Đồng bộ thất bại',
-      text: res?.message || 'Không thể lấy dữ liệu từ Google Sheets.'
+      title: 'Đẩy lên Cloud thất bại',
+      text: res?.message || 'Không thể kết nối đến Google Sheets.'
     });
   }
+}
+
+function showGasGuideModal(){
+  showModal('Hướng dẫn cập nhật mã Google Apps Script', `
+    <div class="p-1">
+      <div class="alert alert-info py-2">
+        <i class="fa-solid fa-circle-info me-1"></i>
+        Để tính năng <b>Đồng bộ tài khoản 2 chiều (Pull/Push)</b> và <b>Cấp mật khẩu GVCN</b> hoạt động hoàn hảo trên Google Sheets, bạn chỉ cần cập nhật mã nguồn theo 3 bước:
+      </div>
+      <ol class="list-group list-group-numbered mb-3">
+        <li class="list-group-item d-flex justify-content-between align-items-start">
+          <div class="ms-2 me-auto">
+            <div class="fw-bold">Mở Apps Script trên Google Trang tính</div>
+            Trên file Google Sheets của trường, nhấn vào menu <b>Tiện ích mở rộng (Extensions)</b> &rarr; <b>Apps Script</b>.
+          </div>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-start">
+          <div class="ms-2 me-auto">
+            <div class="fw-bold">Sao chép mã từ file google_apps_script.js</div>
+            Mở file <code>google_apps_script.js</code> trong thư mục dự án, sao chép toàn bộ nội dung và dán đè vào file <code>Code.gs</code> trong Google Apps Script.
+          </div>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-start">
+          <div class="ms-2 me-auto">
+            <div class="fw-bold">Triển khai phiên bản mới (Rất quan trọng)</div>
+            Nhấn nút <b>Triển khai (Deploy)</b> &rarr; <b>Quản lý bản triển khai (Manage deployments)</b> &rarr; Bấm biểu tượng <b>Chiếc bút chì (Chỉnh sửa)</b> &rarr; Ở mục <i>Phiên bản (Version)</i> chọn <b>Phiên bản mới (New version)</b> &rarr; Nhấn <b>Triển khai (Deploy)</b>.
+          </div>
+        </li>
+      </ol>
+      <div class="alert alert-warning py-2 small mb-3">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <b>Lưu ý quan trọng:</b> Bắt buộc phải chọn <b>"Phiên bản mới" (New version)</b> khi chỉnh sửa bản triển khai thì Google mới cập nhật các hàm mới (như <code>get_all_accounts</code>, <code>sync_all_accounts</code>).
+      </div>
+      <div class="text-end">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Đã hiểu</button>
+      </div>
+    </div>
+  `);
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
