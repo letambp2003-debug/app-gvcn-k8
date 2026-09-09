@@ -249,6 +249,15 @@
     .group-rank{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:11px;border-bottom:1px solid #e5e7eb}.group-rank:last-child{border-bottom:0}
     .competition-note{font-size:.78rem;color:#64748b}.week-closed{background:#fef3c7;border:1px solid #fde68a;color:#92400e;border-radius:12px;padding:10px 12px;font-weight:800}
 
+    /* CHẾ ĐỘ CHƯA ĐĂNG NHẬP: BẢO VỆ TOÀN DIỆN & CĂN GIỮA CỔNG ĐĂNG NHẬP */
+    body.not-authenticated .sidebar { display: none !important; }
+    body.not-authenticated .topbar { display: none !important; }
+    body.not-authenticated .fab-mobile { display: none !important; }
+    body.not-authenticated #classSwitcher { display: none !important; }
+    body.not-authenticated #shareLinksBtn { display: none !important; }
+    body.not-authenticated #savePill { display: none !important; }
+    body.not-authenticated .app-shell { justify-content: center; align-items: center; min-height: 100vh; padding: 24px 16px; }
+    body.not-authenticated .main-wrap { max-width: 620px; width: 100%; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -1126,6 +1135,8 @@ function autoLoginTeacher(username, password){
     if (localAcc.assignedClass && localAcc.assignedClass !== '*') {
       state.activeClassId = localAcc.assignedClass;
     }
+    state.currentPage = 'home';
+    document.body.classList.remove('not-authenticated');
     saveUserSession(localAcc);
     applyUserPermissions();
     hideModal();
@@ -1166,6 +1177,8 @@ function autoLoginGroupLeader(classId, group, pin){
     localAcc.password = pin;
   }
   state.activeClassId = classId;
+  state.currentPage = 'competition';
+  document.body.classList.remove('not-authenticated');
   saveUserSession(localAcc);
   applyUserPermissions();
   hideModal();
@@ -1254,15 +1267,18 @@ function handleUrlParams(){
     window.currentUser = null;
   }
 
-  // 6. Mở Modal Đăng nhập với dữ liệu đã điền sẵn từ link
+  // 6. Điền sẵn thông tin vào cổng đăng nhập nếu có chỉ định từ link
   if (forceLogin || targetUsername || targetClassId || isPinTab) {
-    showLoginModal({
+    window.pendingLoginOptions = {
       targetUser: targetUsername,
       targetClass: targetClassId,
       isPin: !!isPinTab,
       targetGroup: targetGroupStr,
-      notice: targetUsername ? `Bạn đang mở link đăng nhập cho tài khoản: <b>${esc(targetUsername)}</b>` : (targetClassId ? `Bạn đang mở link cho lớp <b>${esc(targetClassId.replace(/^class_/,'').toUpperCase())}</b>` : '')
-    });
+      notice: targetUsername ? `Bạn đang mở link đăng nhập cho tài khoản: <b>${esc(targetUsername)}</b>. Vui lòng nhập mật khẩu.` : (targetClassId ? `Bạn đang mở link cho lớp <b>${esc(targetClassId.replace(/^class_/,'').toUpperCase())}</b>. Vui lòng đăng nhập để tiếp tục.` : '')
+    };
+    if (currentUser) {
+      showLoginModal(window.pendingLoginOptions);
+    }
     return true;
   }
 
@@ -1377,6 +1393,11 @@ function findMatchingAccount(accountsList, inputUsername) {
 }
 
 function showLoginModal(options = {}){
+  if(!currentUser && document.getElementById('loginUsername')){
+    window.pendingLoginOptions = Object.assign(window.pendingLoginOptions || {}, options);
+    renderPage();
+    return;
+  }
   const targetUser = options?.targetUser || '';
   const targetClass = options?.targetClass || state.activeClassId;
   const isPin = !!options?.isPin;
@@ -1551,6 +1572,11 @@ async function handleLoginSubmit(e){
         saveState(false);
       }
 
+      if (localAcc.assignedClass && localAcc.assignedClass !== '*') {
+        state.activeClassId = localAcc.assignedClass;
+      }
+      state.currentPage = localAcc.role === 'group_leader' ? 'competition' : 'home';
+      document.body.classList.remove('not-authenticated');
       saveUserSession(localAcc);
       applyUserPermissions();
       hideModal();
@@ -1609,6 +1635,11 @@ async function handleLoginSubmit(e){
       }
       saveState(false);
 
+      if (cloudUser.assignedClass && cloudUser.assignedClass !== '*') {
+        state.activeClassId = cloudUser.assignedClass;
+      }
+      state.currentPage = cloudUser.role === 'group_leader' ? 'competition' : 'home';
+      document.body.classList.remove('not-authenticated');
       saveUserSession(cloudUser);
       applyUserPermissions();
       if (Swal.isVisible()) Swal.close();
@@ -1688,6 +1719,9 @@ async function handlePinLoginSubmit(e){
         localAcc.password = '1234';
         saveState(false);
       }
+      state.activeClassId = classId;
+      state.currentPage = 'competition';
+      document.body.classList.remove('not-authenticated');
       saveUserSession(localAcc);
       applyUserPermissions();
       hideModal();
@@ -1721,6 +1755,9 @@ async function handlePinLoginSubmit(e){
 
     // 3. Nếu Cloud khớp
     if(cloudSuccess && cloudUser){
+      state.activeClassId = classId;
+      state.currentPage = 'competition';
+      document.body.classList.remove('not-authenticated');
       saveUserSession(cloudUser);
       applyUserPermissions();
       hideModal();
@@ -1848,7 +1885,12 @@ function resetDefaultCredentials(showNotice = true){
   }
 }
 function applyUserPermissions(){
-  if(!currentUser) return;
+  if(!currentUser) {
+    document.body.classList.add('not-authenticated');
+    return;
+  }
+  document.body.classList.remove('not-authenticated');
+
   if(currentUser.role === 'group_leader'){
     if(currentUser.assignedClass && currentUser.assignedClass !== '*'){
       state.activeClassId = currentUser.assignedClass;
@@ -1858,9 +1900,23 @@ function applyUserPermissions(){
     if(!allowedPages.includes(state.currentPage)){
       state.currentPage = 'competition';
     }
-  } else if(currentUser.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*'){
-    const found = state.classes.find(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
-    if(found){
+  } else if(currentUser.role === 'teacher'){
+    if(currentUser.assignedClass && currentUser.assignedClass !== '*'){
+      const cleanTarget = currentUser.assignedClass.toLowerCase().replace(/^class_/, '');
+      let found = state.classes.find(c => c.id.toLowerCase() === currentUser.assignedClass.toLowerCase() || c.name.toLowerCase() === cleanTarget || c.id.toLowerCase() === `class_${cleanTarget}`);
+      if(!found){
+        found = {
+          id: `class_${cleanTarget}`,
+          name: cleanTarget.toUpperCase(),
+          grade: `Khối ${cleanTarget[0] || '8'}`,
+          year: '2026 - 2027',
+          teacherName: currentUser.fullname || `GVCN ${cleanTarget.toUpperCase()}`,
+          session: (/7|9/.test(cleanTarget) ? 'morning' : 'afternoon'),
+          color: '#0d9488'
+        };
+        state.classes.push(found);
+        saveState(false);
+      }
       state.activeClassId = found.id;
     }
     if(state.currentPage === 'accounts'){
@@ -1871,7 +1927,23 @@ function applyUserPermissions(){
   renderHeader();
   renderPage();
 }
-function logoutUser(){
+function logoutUser(force = false){
+  const doLogout = () => {
+    sessionStorage.removeItem('gvcn_user_session');
+    localStorage.removeItem('gvcn_user_session');
+    currentUser = null;
+    if(typeof window !== 'undefined') window.currentUser = null;
+    window.pendingLoginOptions = { notice: 'Bạn đã đăng xuất tài khoản an toàn. Vui lòng đăng nhập để tiếp tục.' };
+    toast('Đã đăng xuất tài khoản');
+    document.body.classList.add('not-authenticated');
+    buildNav();
+    renderHeader();
+    renderPage();
+  };
+  if(force){
+    doLogout();
+    return;
+  }
   Swal.fire({
     icon: 'question',
     title: 'Đăng xuất?',
@@ -1881,15 +1953,7 @@ function logoutUser(){
     cancelButtonText: 'Hủy'
   }).then(r => {
     if(r.isConfirmed){
-      sessionStorage.removeItem('gvcn_user_session');
-      localStorage.removeItem('gvcn_user_session');
-      currentUser = null;
-      if(typeof window !== 'undefined') window.currentUser = null;
-      toast('Đã đăng xuất tài khoản');
-      buildNav();
-      renderHeader();
-      renderPage();
-      showLoginModal({ notice: 'Đã đăng xuất. Vui lòng chọn hoặc nhập tài khoản được cấp để tiếp tục.' });
+      doLogout();
     }
   });
 }
@@ -1945,6 +2009,12 @@ function toast(title,icon='success'){Swal.fire({toast:true,position:'top-end',ic
 function beep(freq=660,dur=.18,vol=.12){try{const ac=new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=freq;o.connect(g);g.connect(ac.destination);g.gain.value=vol;o.start();setTimeout(()=>{o.stop();ac.close()},dur*1000)}catch(e){}}
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
 function buildNav(){
+  const sn = document.getElementById('sideNav');
+  if(!sn) return;
+  if(!currentUser){
+    sn.innerHTML = '';
+    return;
+  }
   const n=classStudents().length;
   let navItems = NAV;
   if(currentUser?.role === 'group_leader'){
@@ -1953,7 +2023,7 @@ function buildNav(){
   } else if(currentUser?.role !== 'admin'){
     navItems = NAV.filter(([id]) => id !== 'accounts');
   }
-  document.getElementById('sideNav').innerHTML=navItems.map(([id,ic,label,b])=>{
+  sn.innerHTML=navItems.map(([id,ic,label,b])=>{
     let displayLabel = label;
     if(currentUser?.role === 'group_leader' && id === 'competition'){
       displayLabel = 'Chấm điểm tổ';
@@ -1965,28 +2035,39 @@ function buildNav(){
   }).join('');
 }
 function renderHeader(){
-  const [t,s]=PAGE_META[state.currentPage]||PAGE_META.home;
-  let displayTitle = t;
-  let displaySubtitle = s;
-  if(currentUser?.role === 'group_leader' && state.currentPage === 'competition'){
-    displayTitle = `Chấm điểm Nề nếp · ${currentUser.assignedGroup}`;
-    displaySubtitle = `Tổ trưởng theo dõi và chấm điểm các bạn trong ${currentUser.assignedGroup} — Bản ghi sẽ gửi đến GVCN phê duyệt.`;
+  let displayTitle, displaySubtitle;
+  if(!currentUser){
+    displayTitle = 'THCS Quang Trung';
+    displaySubtitle = 'Cổng Đăng Nhập Quản Trị Sổ Chủ Nhiệm Điện Tử';
+  } else {
+    const [t,s]=PAGE_META[state.currentPage]||PAGE_META.home;
+    displayTitle = t;
+    displaySubtitle = s;
+    if(currentUser?.role === 'group_leader' && state.currentPage === 'competition'){
+      displayTitle = `Chấm điểm Nề nếp · ${currentUser.assignedGroup}`;
+      displaySubtitle = `Tổ trưởng theo dõi và chấm điểm các bạn trong ${currentUser.assignedGroup} — Bản ghi sẽ gửi đến GVCN phê duyệt.`;
+    }
   }
   document.getElementById('pageTitle').textContent=displayTitle;
   document.getElementById('pageSubtitle').textContent=displaySubtitle;
   const cs = document.getElementById('classSwitcher');
-  if(currentUser?.role === 'group_leader'){
+  if(!currentUser){
+    cs.style.display = 'none';
+  } else if(currentUser?.role === 'group_leader'){
+    cs.style.display = '';
     const cls = activeClass();
     cs.innerHTML = `<option value="${cls.id}" selected>🔒 ${esc(cls.name)} (${esc(currentUser.assignedGroup)})</option>`;
     cs.disabled = true;
     cs.title = 'Tài khoản Tổ trưởng cố định theo lớp';
   } else if(currentUser && currentUser.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*'){
+    cs.style.display = '';
     const assigned = state.classes.filter(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
     const displayList = assigned.length ? assigned : [state.classes[0]];
     cs.innerHTML = displayList.map(c => `<option value="${c.id}" selected>🔒 ${esc(c.name)} (Lớp chủ nhiệm)</option>`).join('');
     cs.disabled = true;
     cs.title = 'Tài khoản giáo viên được phân công lớp này';
   } else {
+    cs.style.display = '';
     cs.disabled = false;
     cs.innerHTML = state.classes.map(c=>`<option value="${c.id}" ${c.id===state.activeClassId?'selected':''}>${esc(c.name)} · ${classStudentsFor(c.id).length} HS</option>`).join('');
     cs.title = 'Chuyển đổi lớp học (Quyền Quản trị viên)';
@@ -2012,7 +2093,11 @@ function renderHeader(){
       loBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-1"></i><span class="d-none d-sm-inline">Đăng nhập</span>';
       loBtn.title = 'Đăng nhập vào tài khoản được cấp';
       loBtn.className = 'btn btn-sm btn-primary';
-      loBtn.onclick = () => showLoginModal();
+      loBtn.onclick = () => {
+        const u = document.getElementById('loginUsername');
+        if(u) { u.focus(); u.select(); }
+        else { showLoginModal(); }
+      };
     } else {
       loBtn.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket"></i>';
       loBtn.title = `Đăng xuất (${currentUser.username || ''})`;
@@ -2038,6 +2123,12 @@ function renderHeader(){
 }
 function classStudentsFor(id){return state.students.filter(s=>s.classId===id)}
 function navigate(page){
+  if(!currentUser){
+    toast('Vui lòng đăng nhập để sử dụng tính năng!', 'warning');
+    const u = document.getElementById('loginUsername');
+    if(u) { u.focus(); }
+    return;
+  }
   if(page === 'accounts' && currentUser?.role !== 'admin'){
     return toast('Chỉ Quản trị viên (Admin) mới có quyền truy cập mục Quản trị GVCN', 'warning');
   }
@@ -2054,6 +2145,10 @@ function navigate(page){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function switchClass(id){
+  if(!currentUser){
+    toast('Vui lòng đăng nhập để chọn lớp!', 'warning');
+    return;
+  }
   if (currentUser?.role === 'teacher' && currentUser.assignedClass && currentUser.assignedClass !== '*' && currentUser.assignedClass !== id) {
     const myCls = state.classes.find(c => c.id === currentUser.assignedClass || c.name === currentUser.assignedClass);
     return toast(`Bạn chỉ có quyền làm việc trên lớp chủ nhiệm ${myCls?.name || ''}!`, 'warning');
@@ -2070,6 +2165,139 @@ function switchClass(id){
   renderPage();
 }
 
+function renderLoginPage(opts = {}){
+  const options = Object.assign({}, window.pendingLoginOptions || {}, opts);
+  const targetUser = options?.targetUser || '';
+  const targetClass = options?.targetClass || state.activeClassId;
+  const isPin = !!options?.isPin;
+  const targetGroup = options?.targetGroup || 'Tổ 1';
+  const customNotice = options?.notice || '';
+
+  const classesList = state.classes && state.classes.length ? state.classes : [{ id: 'class_8a6', name: '8A6' }, { id: 'class_8a1', name: '8A1' }];
+  const classOptions = classesList.map(c => `<option value="${c.id}" ${c.id === targetClass ? 'selected' : ''}>Lớp ${esc(c.name)}</option>`).join('');
+
+  return `
+    <div class="card p-4 p-md-5 border-0 shadow-lg" style="border-radius: 24px; background: rgba(255,255,255,0.98); backdrop-filter: blur(10px);">
+      <div class="text-center mb-4">
+        <div class="brand-logo mx-auto mb-3" style="width:68px; height:68px; font-size:1.6rem; border-radius:20px; box-shadow: 0 10px 25px rgba(13,148,136,0.35);">THCS</div>
+        <h3 class="fw-bold m-0 text-dark" style="letter-spacing: -0.02em;">THCS QUANG TRUNG</h3>
+        <div class="text-teal fw-bold fs-6 mt-1"><i class="fa-solid fa-shield-halved me-1"></i>Cổng Quản Trị Sổ Chủ Nhiệm Điện Tử</div>
+        <div class="text-muted small mt-1">Vui lòng đăng nhập tài khoản được cấp phát để vào lớp của bạn</div>
+      </div>
+
+      ${customNotice ? `
+        <div class="alert alert-primary py-2 px-3 small mb-4 d-flex align-items-center rounded-3">
+          <i class="fa-solid fa-circle-info fs-5 me-2 text-primary"></i>
+          <div>${customNotice}</div>
+        </div>
+      ` : `
+        <div class="alert alert-light border py-2 px-3 small mb-4 text-muted rounded-3 text-center">
+          <i class="fa-solid fa-lock me-1 text-secondary"></i>Hệ thống bảo vệ phân quyền riêng biệt cho từng lớp học.
+        </div>
+      `}
+
+      <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-4" id="loginPortalTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link ${isPin ? '' : 'active'} fw-bold py-2 rounded-3" id="page-teacher-tab" data-bs-toggle="pill" data-bs-target="#page-tab-teacher" type="button" role="tab">
+            <i class="fa-solid fa-chalkboard-user me-1"></i>Giáo viên / Quản trị
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link ${isPin ? 'active' : ''} fw-bold py-2 rounded-3" id="page-pin-tab" data-bs-toggle="pill" data-bs-target="#page-tab-pin" type="button" role="tab">
+            <i class="fa-solid fa-key me-1"></i>Tổ Trưởng (Mã PIN)
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content" id="loginPortalTabsContent">
+        <!-- TAB 1: GIÁO VIÊN / ADMIN -->
+        <div class="tab-pane fade ${isPin ? '' : 'show active'}" id="page-tab-teacher" role="tabpanel">
+          <form onsubmit="handleLoginSubmit(event)">
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-secondary">Tên đăng nhập *</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="fa-solid fa-user text-muted"></i></span>
+                <input id="loginUsername" class="form-control font-monospace fw-bold fs-6" required placeholder="Nhập tên đăng nhập được cấp" value="${esc(targetUser)}" autocomplete="username">
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-secondary">Mật khẩu *</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="fa-solid fa-lock text-muted"></i></span>
+                <input id="loginPassword" type="password" class="form-control font-monospace fw-bold fs-6" required placeholder="Nhập mật khẩu" autocomplete="current-password">
+                <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordInput('loginPassword', this)" title="Hiện / Ẩn mật khẩu">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="btnTeacherLoginSubmit" class="btn btn-primary w-100 py-3 fw-bold fs-6 rounded-3 shadow-sm" onclick="handleLoginSubmit(event)">
+              <i class="fa-solid fa-right-to-bracket me-2"></i>Đăng Nhập Vào Lớp Học
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB 2: TỔ TRƯỞNG (PIN) -->
+        <div class="tab-pane fade ${isPin ? 'show active' : ''}" id="page-tab-pin" role="tabpanel">
+          <form onsubmit="handlePinLoginSubmit(event)">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label fw-bold small text-secondary">Chọn Lớp *</label>
+                <select id="pinLoginClass" class="form-select form-select-lg fs-6" required>
+                  ${classOptions}
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-bold small text-secondary">Chọn Tổ *</label>
+                <select id="pinLoginGroup" class="form-select form-select-lg fs-6" required>
+                  <option value="Tổ 1" ${targetGroup === 'Tổ 1' ? 'selected' : ''}>Tổ 1</option>
+                  <option value="Tổ 2" ${targetGroup === 'Tổ 2' ? 'selected' : ''}>Tổ 2</option>
+                  <option value="Tổ 3" ${targetGroup === 'Tổ 3' ? 'selected' : ''}>Tổ 3</option>
+                  <option value="Tổ 4" ${targetGroup === 'Tổ 4' ? 'selected' : ''}>Tổ 4</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-secondary">Mã PIN Tổ trưởng *</label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light"><i class="fa-solid fa-key text-muted"></i></span>
+                <input id="pinLoginPin" type="password" maxlength="6" class="form-control font-monospace text-center fs-4 fw-bold" required placeholder="••••" autocomplete="current-password">
+                <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordInput('pinLoginPin', this)" title="Hiện / Ẩn mã PIN">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+              <div class="form-text text-muted text-center mt-2 small"><i class="fa-solid fa-shield me-1"></i>Nhập mã PIN do Giáo viên chủ nhiệm của bạn cấp.</div>
+            </div>
+            <button type="submit" id="btnPinLoginSubmit" class="btn btn-success w-100 py-3 fw-bold fs-6 rounded-3 shadow-sm" onclick="handlePinLoginSubmit(event)">
+              <i class="fa-solid fa-key me-2"></i>Đăng Nhập Tổ Trưởng
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="border-top mt-4 pt-3 text-center text-muted small">
+        <i class="fa-solid fa-circle-check text-success me-1"></i>Hệ thống máy chủ bảo mật THCS Quang Trung · Năm học 2026 - 2027
+      </div>
+    </div>
+  `;
+}
+
+function afterRenderLogin(){
+  const isPinTab = document.getElementById('page-pin-tab')?.classList.contains('active');
+  if(isPinTab){
+    const pin = document.getElementById('pinLoginPin');
+    if(pin) { pin.focus(); }
+  } else {
+    const u = document.getElementById('loginUsername');
+    const p = document.getElementById('loginPassword');
+    if(u && !u.value){
+      u.focus();
+    } else if(p){
+      p.focus();
+    }
+  }
+}
+
 function renderPage(){
   chartRefs.forEach(c=>{try{c.destroy()}catch(e){}});
   chartRefs=[];
@@ -2078,6 +2306,16 @@ function renderPage(){
   root.classList.remove('fade-in');
   void root.offsetWidth;
   root.classList.add('fade-in');
+
+  // NẾU CHƯA ĐĂNG NHẬP: BẮT BUỘC HIỂN THỊ CỔNG ĐĂNG NHẬP, TUYỆT ĐỐI KHÔNG HIỂN THỊ DỮ LIỆU LỚP HỌC
+  if(!currentUser){
+    document.body.classList.add('not-authenticated');
+    root.innerHTML = renderLoginPage(window.pendingLoginOptions || {});
+    setTimeout(afterRenderLogin, 0);
+    return;
+  }
+  document.body.classList.remove('not-authenticated');
+
   const fn={home:renderHome,classes:renderClasses,accounts:renderAccounts,students:renderStudents,attendance:renderAttendance,competition:renderCompetition,seating:renderSeating,timetable:renderTimetable,rewards:renderRewards,wheel:renderWheel,film:renderFilm,noise:renderNoise,countdown:renderCountdown,links:renderLinks,stats:renderStats,data:renderData,settings:renderSettings}[state.currentPage]||renderHome;
   root.innerHTML=fn();
   setTimeout(afterRender,0);
@@ -4129,7 +4367,26 @@ function exportStatsXlsx(){const ss=classStudents().map((s,i)=>({STT:i+1,'Học 
 async function exportStatsPDF(){const el=document.getElementById('statsReport');if(!el)return;const canvas=await html2canvas(el,{scale:1.5,backgroundColor:'#fff',useCORS:true});const {jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4');const margin=10,pageW=210,pageH=297,contentW=pageW-margin*2,contentH=pageH-margin*2;const pxPerMm=canvas.width/contentW,pagePx=Math.floor(contentH*pxPerMm);let yPx=0,page=0;while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx),slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sliceH;const ctx=slice.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,slice.width,slice.height);ctx.drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);const img=slice.toDataURL('image/jpeg',.92),imgH=sliceH/pxPerMm;if(page>0)pdf.addPage();pdf.addImage(img,'JPEG',margin,margin,contentW,imgH,undefined,'FAST');yPx+=sliceH;page++}pdf.save(`bao-cao-${activeClass().name}.pdf`);toast(`Đã tạo PDF ${page} trang`)}
 function downloadXlsx(sheets,filename){const wb=XLSX.utils.book_new();sheets.forEach(([name,rows])=>{const ws=XLSX.utils.json_to_sheet(rows);XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31))});XLSX.writeFile(wb,filename)}
 function renderData(){const size=(new Blob([JSON.stringify(state)]).size/1024).toFixed(1),hasRecovery=!!localStorage.getItem(RECOVERY_KEY);return `<div class="section-head"><div><h2><i class="fa-solid fa-database text-primary me-2"></i>Quản lý Dữ liệu</h2><p>Sao lưu dữ liệu định kỳ để chuyển máy hoặc khôi phục khi cần.</p></div></div><div class="grid-equal"><div class="card p-4"><h4 class="fw-bold">📦 Sao lưu toàn bộ</h4><p class="text-muted">Xuất mọi lớp, học sinh, điểm danh, thi đua tuần, xu, lịch, phần thưởng và cài đặt thành JSON có phiên bản cấu trúc.</p><button class="btn btn-primary" onclick="exportJSON()"><i class="fa-solid fa-download me-1"></i>Xuất file JSON sao lưu</button><div class="mt-3 small text-muted">Schema v${APP_SCHEMA_VERSION} · Kích thước hiện tại: ~${size} KB</div></div><div class="card p-4"><h4 class="fw-bold">♻️ Khôi phục</h4><p class="text-muted">File nhập được kiểm tra và chuẩn hóa trước khi thay dữ liệu hiện tại.</p><button class="btn btn-outline-primary" onclick="document.getElementById('hiddenImport').click()"><i class="fa-solid fa-upload me-1"></i>Nhập file JSON</button>${hasRecovery?'<button class="btn btn-outline-warning ms-2" onclick="restoreRecovery()"><i class="fa-solid fa-clock-rotate-left me-1"></i>Khôi phục bản trước</button>':''}</div></div><div class="card p-4 mt-3 border-danger"><h4 class="fw-bold text-danger">⚠️ Vùng dữ liệu nguy hiểm</h4><p class="text-muted">Trước khi đặt lại, hệ thống tự giữ một bản khôi phục cục bộ.</p><button class="btn btn-outline-danger" onclick="resetAllData()"><i class="fa-solid fa-trash-can me-1"></i>Xóa và tạo lại dữ liệu mẫu</button></div>`}
-function exportJSON(){const payload={...state,version:APP_SCHEMA_VERSION,_backup:{app:'Lớp 8A6 - THCS Quang Trung V5.3',schemaVersion:APP_SCHEMA_VERSION,rosterVersion:ROSTER_VERSION,exportedAt:new Date().toISOString()}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});downloadBlob(blob,`lop-hoc-vui-ve-backup-v${APP_SCHEMA_VERSION}-${today()}.json`);toast('Đã xuất bản sao lưu')}
+function exportJSON(){
+  const safeState = { ...state };
+  if(currentUser?.role !== 'admin'){
+    delete safeState.accounts;
+  }
+  const clsName = activeClass()?.name || 'Lop';
+  const payload = {
+    ...safeState,
+    version: APP_SCHEMA_VERSION,
+    _backup: {
+      app: `Lớp ${clsName} - THCS Quang Trung V5.4`,
+      schemaVersion: APP_SCHEMA_VERSION,
+      rosterVersion: ROSTER_VERSION,
+      exportedAt: new Date().toISOString()
+    }
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `lop-hoc-vui-ve-backup-${clsName}-v${APP_SCHEMA_VERSION}-${today()}.json`);
+  toast('Đã xuất bản sao lưu');
+}
 async function importJSON(file){try{if(file.size>12*1024*1024)throw new Error('File sao lưu lớn hơn 12 MB');const text=await file.text(),obj=JSON.parse(text);if(!obj||typeof obj!=='object'||!Array.isArray(obj.classes)||!Array.isArray(obj.students))throw new Error('Sai cấu trúc sao lưu');const normalized=applyOfficialRosterMigration(normalizeState(obj));if(!normalized.classes.length)throw new Error('Không có lớp học hợp lệ');const r=await Swal.fire({icon:'warning',title:'Khôi phục dữ liệu?',html:`<div class="text-start">Tìm thấy <b>${normalized.classes.length}</b> lớp và <b>${normalized.students.length}</b> học sinh.<br>Dữ liệu hiện tại sẽ được giữ thành một bản khôi phục cục bộ trước khi thay thế.</div>`,showCancelButton:true,confirmButtonText:'Khôi phục'});if(!r.isConfirmed)return;recoverySnapshot();state=normalized;saveState();buildNav();renderHeader();renderPage();toast('Khôi phục thành công')}catch(e){Swal.fire({icon:'error',title:'File không hợp lệ',text:e.message})}}
 async function resetAllData(){const r=await Swal.fire({icon:'warning',title:'Đặt lại toàn bộ dữ liệu?',text:'Hệ thống sẽ giữ một bản khôi phục cục bộ trước khi đặt lại.',showCancelButton:true,confirmButtonText:'Đặt lại',confirmButtonColor:'#dc2626'});if(!r.isConfirmed)return;recoverySnapshot();state=defaultState();saveState();buildNav();renderHeader();renderPage();toast('Đã đặt lại dữ liệu')}
 async function restoreRecovery(){try{const raw=localStorage.getItem(RECOVERY_KEY);if(!raw)return toast('Không có bản khôi phục','info');const restored=normalizeState(JSON.parse(raw));const r=await Swal.fire({icon:'question',title:'Khôi phục bản dữ liệu trước?',showCancelButton:true,confirmButtonText:'Khôi phục'});if(!r.isConfirmed)return;recoverySnapshot();state=restored;saveState();buildNav();renderHeader();renderPage();toast('Đã khôi phục bản trước')}catch(e){Swal.fire({icon:'error',title:'Không thể khôi phục',text:e.message})}}
@@ -4349,6 +4606,7 @@ async function testGasApiConnection(){
 }
 
 async function pullClassDataFromCloud(interactive = true){
+  if(!currentUser) return;
   const url = state.settings?.gasApiUrl || localStorage.getItem('gas_api_url');
   if(!url){
     if(interactive) toast('Chưa cài đặt URL Google Sheets', 'warning');
@@ -5442,19 +5700,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal){
     mainModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
   }
+  const handledDeepLink = handleUrlParams();
   if(currentUser){
+    document.body.classList.remove('not-authenticated');
     applyUserPermissions();
   } else {
+    document.body.classList.add('not-authenticated');
     buildNav();
     renderHeader();
     renderPage();
   }
-  const handledDeepLink = handleUrlParams();
-  if(!currentUser && !handledDeepLink){
-    showLoginModal({ notice: 'Chào mừng bạn! Vui lòng chọn hoặc nhập tài khoản được cấp để bắt đầu làm việc.' });
-  }
   document.getElementById('hiddenImport').addEventListener('change',e=>{if(e.target.files[0])importJSON(e.target.files[0]);e.target.value=''});
-  if(state.settings?.gasApiUrl || localStorage.getItem('gas_api_url')){
+  if(currentUser && (state.settings?.gasApiUrl || localStorage.getItem('gas_api_url'))){
     pullClassDataFromCloud(false);
   }
 });
